@@ -1,6 +1,6 @@
 """Runnable check: python -m app.storage.memory_check
 
-Fails if learning does not persist, examples cannot be built for SFT,
+Fails if learning does not persist, DPO pairs cannot be built,
 YouTube URLs do not parse, or disk cleanup leaves media behind.
 """
 from __future__ import annotations
@@ -15,7 +15,7 @@ from app.storage import cleanup, memory
 
 def main() -> None:
     tmp = Path(tempfile.mkdtemp()) / "memory.db"
-    memory.init(tmp, migrate=False)
+    memory.init(tmp, migrate=False, force_sqlite=True)
 
     memory.save_rubric(
         {
@@ -103,8 +103,18 @@ def main() -> None:
     assert len(examples) >= finetune.MIN_EXAMPLES, len(examples)
     kinds = {ex["kind"] for ex in examples}
     assert "judge" in kinds and "writer" in kinds, kinds
+    row = examples[0]["messages"]
+    assert "preferred_output" in row and "non_preferred_output" in row, row
+    assert row["preferred_output"] != row["non_preferred_output"]
     memory.replace_ft_examples(examples)
     assert len(memory.list_ft_examples()) >= finetune.MIN_EXAMPLES
+
+    from app.pipeline import highlight
+    windows = highlight._candidate_windows(
+        [{"start_sec": 140, "end_sec": 155, "intensity": 9, "hook_potential": 8}],
+        300.0,
+    )
+    assert windows and windows[0][0] <= 140 and windows[0][1] >= 155, windows
 
     prompt = rubric_store.rubric_as_prompt()
     assert "Learned editor preferences" not in prompt, prompt

@@ -157,26 +157,67 @@ _OPINION_SCHEMA = {
 
 
 def second_opinion(
-    variants: list[dict], analysis_summary: str, instruction: str, rubric_prompt: str
+    variants: list[dict],
+    analysis_summary: str,
+    instruction: str,
+    rubric_prompt: str,
+    outputs: dict[str, str] | None = None,
+    work_dir=None,
 ) -> dict | None:
-    """Independent GPT verdict on the same variants. Fails open (None)."""
+    """Independent GPT verdict. Prefers rendered frames when present. Fails open."""
     if not config.CROSS_CHECK:
         return None
     try:
+        from pathlib import Path
+        from app.pipeline import preprocess
+
         system = (
-            "You are an independent judge of short-form video edits. Your "
-            "standard is the most universally accepted, mainstream shorts "
-            "editing style. Pick the better candidate by the seed rubric.\n\n"
+            "You are an independent judge of short-form video edits. Watch the "
+            "rendered frames when they are provided. Pick the better candidate "
+            "by the seed rubric.\n\n"
             + rubric_prompt
         )
-        user = (
+        text = (
             (f"The creator's request:\n{instruction}\n\n" if instruction.strip() else "")
             + f"Source footage summary:\n{analysis_summary}\n\n"
-            "Candidate edits:\n"
-            + json.dumps(variants, ensure_ascii=False, indent=1)
+            "You are watching RENDERED shorts. Frames are labelled by edit.\n"
+            "Plans (reference only):\n"
+            + json.dumps(
+                [{"label": v.get("label"), "concept": v.get("concept")}
+                 for v in variants],
+                ensure_ascii=False,
+            )
         )
+        content = [{"type": "text", "text": text}]
+        tmp = Path(work_dir) / "judge_frames_gpt" if work_dir else config.TMP_DIR / "judge_frames_gpt"
+        saw_pixels = False
+        for v in variants:
+            label = v.get("label")
+            raw = (outputs or {}).get(label)
+            if not raw or not Path(raw).exists():
+                continue
+            frames = preprocess.extract_frames(
+                Path(raw), tmp / label, fps=config.JUDGE_FPS,
+            )
+            if not frames:
+                continue
+            step = max(1, len(frames) // config.JUDGE_MAX_FRAMES)
+            sampled = frames[::step][: config.JUDGE_MAX_FRAMES]
+            for f in sampled:
+                content.append({"type": "text", "text": f"[edit {label} @ {f['t']:.1f}s]"})
+                content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:image/jpeg;base64," + preprocess.frame_to_b64(f["path"])
+                    },
+                })
+                saw_pixels = True
+        if not saw_pixels:
+            content = text + "\n\nCandidate edits:\n" + json.dumps(
+                variants, ensure_ascii=False, indent=1
+            )
         return openai_client.complete_json(
-            system, user, _OPINION_SCHEMA, schema_name="opinion"
+            system, content, _OPINION_SCHEMA, schema_name="opinion"
         )
     except Exception:  # noqa: BLE001
         traceback.print_exc()

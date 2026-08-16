@@ -1,7 +1,7 @@
 """End-to-end job runner, optimized for turnaround time.
 
-ingest -> analyze (parallel Claude vision) -> write 2 shot plans
--> [render A, render B, AI judge] all in parallel -> await evaluation.
+ingest -> analyze (coarse then dense refine) -> write 2 shot plans
+-> render A/B -> AI judge watches the rendered pixels -> await evaluation.
 """
 from __future__ import annotations
 
@@ -49,8 +49,6 @@ def run_job(job_id: str) -> None:
         job["variants"] = variants
         job_store.save_job(job)
 
-        # 4+5. render both variants AND run the AI judge concurrently —
-        # judging needs only the plans, not the rendered pixels.
         job_store.set_stage(job, "rendering")
         summary = " ".join(v["summary"] for v in analysis["videos"])
 
@@ -59,26 +57,26 @@ def run_job(job_id: str) -> None:
             render.render_variant(v, video_infos, work_dir, out)
             return v["label"], str(out)
 
-        with ThreadPoolExecutor(max_workers=len(variants) + 2) as pool:
-            judge_future = pool.submit(
-                judge.judge_variants, variants, summary, instruction
-            )
-            # independent GPT verdict runs alongside (hallucination guard)
-            opinion_future = pool.submit(
-                verify.second_opinion,
-                variants, summary, instruction, rubric_store.rubric_as_prompt(),
-            )
+        with ThreadPoolExecutor(max_workers=len(variants)) as pool:
             render_futures = [pool.submit(_render, v) for v in variants]
             job["outputs"] = dict(f.result() for f in render_futures)
-            job_store.save_job(job)
-            cleanup.drop_intermediates(work_dir)
-            job_store.set_stage(job, "judging")
-            verdict = judge_future.result()
-            opinion = opinion_future.result()
-            if opinion is not None:
-                verdict["second_opinion"] = opinion
-                verdict["models_agree"] = opinion.get("winner") == verdict["winner"]
-            job["judge_verdict"] = verdict
+        job_store.save_job(job)
+        cleanup.drop_intermediates(work_dir)
+
+        # Judge AFTER render so it watches the actual pixels.
+        job_store.set_stage(job, "judging")
+        verdict = judge.judge_variants(
+            variants, summary, instruction,
+            outputs=job["outputs"], work_dir=work_dir,
+        )
+        opinion = verify.second_opinion(
+            variants, summary, instruction, rubric_store.rubric_as_prompt(),
+            outputs=job["outputs"], work_dir=work_dir,
+        )
+        if opinion is not None:
+            verdict["second_opinion"] = opinion
+            verdict["models_agree"] = opinion.get("winner") == verdict["winner"]
+        job["judge_verdict"] = verdict
 
         job_store.set_stage(job, "awaiting_evaluation")
     except Exception as e:  # noqa: BLE001 — surface any stage failure on the job

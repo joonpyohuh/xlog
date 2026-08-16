@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+# Vercel Functions are read-only except /tmp.
+ON_VERCEL = bool(os.environ.get("VERCEL"))
 
 # ------------------ API ------------------ #
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -55,14 +57,20 @@ OUTRO_TEXT = "directed by xlog"
 OUTRO_DURATION_SEC = 2.0
 
 # ------------------ Analysis ------------------ #
-# Frame sampling rate for Claude vision analysis. Long videos are expensive;
-# 0.5 fps (1 frame every 2s) is a reasonable pilot default.
+# Frame sampling rate for the coarse pass. Dense refine (REFINE_FPS) then
+# re-reads only the windows the coarse pass marked as worth cutting.
 ANALYSIS_FPS = 0.5
-ANALYSIS_FRAME_LONG_EDGE = 768   # downscale frames before sending to the API
-MAX_FRAMES_PER_REQUEST = 50      # chunk long videos into multiple vision calls
+REFINE_FPS = 8.0          # 5–10 fps on candidate windows only
+REFINE_PAD_SEC = 1.0
+REFINE_MAX_WINDOWS = 8    # per source video
+REFINE_MIN_SCORE = 6      # intensity or hook_potential
+JUDGE_FPS = 1.0           # sample rendered shorts for the pixel judge
+JUDGE_MAX_FRAMES = 20     # per variant; keeps the vision call bounded
+ANALYSIS_FRAME_LONG_EDGE = 768
+MAX_FRAMES_PER_REQUEST = 50
 
 # ------------------ Paths ------------------ #
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = Path("/tmp/xlog") if ON_VERCEL else (BASE_DIR / "data")
 UPLOAD_DIR = DATA_DIR / "uploads"
 JOBS_DIR = DATA_DIR / "jobs"
 RUBRIC_DIR = DATA_DIR / "rubric"
@@ -77,8 +85,9 @@ YTDLP_BIN = os.environ.get("XLOG_YTDLP", "yt-dlp")
 REFERENCE_ANALYSIS_FPS = 1.0   # denser sampling: we're studying the *editing*
 REFERENCE_MAX_SEC = 180        # only learn from short-form references
 SOURCE_MAX_SEC = 30 * 60       # long-form YouTube source cap
-# OpenAI SFT base. gpt-5 is not fine-tunable; 4.1-mini is.
+# OpenAI DPO base. gpt-5 is not fine-tunable; 4.1-mini is.
 FT_BASE_MODEL = os.environ.get("XLOG_FT_BASE_MODEL", "gpt-4.1-mini-2025-04-14")
+DPO_BETA = float(os.environ.get("XLOG_DPO_BETA", "0.1"))
 
 # ------------------ ffmpeg ------------------ #
 FFMPEG_BIN = os.environ.get("XLOG_FFMPEG", "ffmpeg")

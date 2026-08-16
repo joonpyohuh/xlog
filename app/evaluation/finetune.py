@@ -1,11 +1,11 @@
-"""Turn creator teaching into an OpenAI SFT model.
+"""Turn creator A/B picks into OpenAI DPO preference pairs.
 
-Judge/writer prompts stay a fixed size. Taste is trained into weights
-(data/xlog_memory.db holds the examples). Until a fine-tune is ready,
-a short capped fallback is used — never the unbounded preference dump.
+SFT that copies the chosen variant as a gold assistant message just
+overfits that JSON. DPO trains on the actual comparison: same prompt,
+preferred vs rejected output.
 
-ponytail: OpenAI requires >=10 JSONL rows; we pad by repeating unique
-examples until that floor. Replace with more unique events as they arrive.
+ponytail: OpenAI still wants >=10 JSONL rows; we pad by repeating unique
+pairs until that floor. Replace with more unique events as they arrive.
 """
 from __future__ import annotations
 
@@ -92,7 +92,7 @@ def rebuild_examples() -> list[dict]:
 
 
 def schedule() -> dict:
-    """Rebuild examples from the DB and start a fine-tune if needed. Fail-open."""
+    """Rebuild DPO pairs from the DB and start a fine-tune if needed. Fail-open."""
     memory_store.replace_ft_examples(rebuild_examples())
     if not config.OPENAI_API_KEY:
         return {"ok": False, "reason": "no_openai_key"}
@@ -148,14 +148,20 @@ def refresh_running() -> None:
 
 def _submit(examples: list[dict], fingerprint: str) -> dict:
     from app.llm.openai_client import client
-    body = "\n".join(json.dumps({"messages": ex["messages"]}, ensure_ascii=False) for ex in examples)
+    body = "\n".join(
+        json.dumps(ex["messages"], ensure_ascii=False) for ex in examples
+    )
     buf = BytesIO(body.encode("utf-8"))
-    buf.name = "xlog_sft.jsonl"
+    buf.name = "xlog_dpo.jsonl"
     uploaded = client().files.create(file=buf, purpose="fine-tune")
     job = client().fine_tuning.jobs.create(
         training_file=uploaded.id,
         model=config.FT_BASE_MODEL,
-        suffix="xlog",
+        suffix="xlog-dpo",
+        method={
+            "type": "dpo",
+            "dpo": {"hyperparameters": {"beta": config.DPO_BETA}},
+        },
     )
     memory_store.save_ft_job(
         openai_job_id=job.id,
@@ -173,23 +179,56 @@ def _fingerprint(examples: list[dict]) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 
+def _dpo_row(
+    kind: str,
+    source: str,
+    source_id: str,
+    system: str,
+    user: str,
+    preferred: str,
+    rejected: str,
+) -> dict:
+    return {
+        "kind": kind,
+        "source": source,
+        "source_id": source_id,
+        "messages": {
+            "input": {
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ]
+            },
+            "preferred_output": [{"role": "assistant", "content": preferred}],
+            "non_preferred_output": [{"role": "assistant", "content": rejected}],
+        },
+    }
+
+
+def _other_label(choice: str, variants: list[dict]) -> str:
+    for v in variants:
+        label = v.get("label")
+        if label and label != choice:
+            return label
+    return "B" if choice == "A" else "A"
+
+
 def _from_feedback(ev: dict) -> list[dict]:
     variants = ev.get("variants") or []
     choice = ev.get("user_choice") or ""
     comment = ev.get("user_comment") or f"creator chose {choice}"
     if not variants or not choice:
         return []
+    chosen = next((v for v in variants if v.get("label") == choice), None)
+    rejected = next((v for v in variants if v.get("label") != choice), None)
+    if chosen is None or rejected is None:
+        return []
+    other = _other_label(choice, variants)
     user_judge = (
-        f"The creator's request for this short:\n(see candidates)\n\n"
+        f"The creator's request for this short:\n{comment}\n\n"
         "Candidate edits:\n"
         + json.dumps(variants, ensure_ascii=False)
     )
-    assistant_judge = json.dumps(
-        _verdict_for(choice, comment, variants), ensure_ascii=False
-    )
-    chosen = next((v for v in variants if v.get("label") == choice), variants[0])
-    rest = [v for v in variants if v is not chosen]
-    ordered = [chosen] + rest
     moments = [
         {
             "video_index": s.get("video_index", 0),
@@ -202,30 +241,20 @@ def _from_feedback(ev: dict) -> list[dict]:
     user_writer = (
         f"User's request for this short (follow it faithfully):\n{comment}\n\n"
         f"Available moments:\n{json.dumps(moments, ensure_ascii=False)}\n\n"
-        f"Design exactly {config.VARIANTS_PER_JOB} DIFFERENT shot plans "
-        f"(labels 'A', 'B', ...). House style is already trained."
+        "Write ONE shot plan for this request. House style is already trained."
     )
+    sid = ev.get("job_id", "")
     return [
-        {
-            "kind": "judge",
-            "source": "feedback",
-            "source_id": ev.get("job_id", ""),
-            "messages": [
-                {"role": "system", "content": JUDGE_SYSTEM},
-                {"role": "user", "content": user_judge},
-                {"role": "assistant", "content": assistant_judge},
-            ],
-        },
-        {
-            "kind": "writer",
-            "source": "feedback",
-            "source_id": ev.get("job_id", ""),
-            "messages": [
-                {"role": "system", "content": writer_system()},
-                {"role": "user", "content": user_writer},
-                {"role": "assistant", "content": json.dumps({"variants": ordered}, ensure_ascii=False)},
-            ],
-        },
+        _dpo_row(
+            "judge", "feedback", sid, JUDGE_SYSTEM, user_judge,
+            json.dumps(_verdict_for(choice, comment, variants), ensure_ascii=False),
+            json.dumps(_verdict_for(other, "weaker fit to creator taste", variants), ensure_ascii=False),
+        ),
+        _dpo_row(
+            "writer", "feedback", sid, writer_system(), user_writer,
+            json.dumps({"variants": [chosen]}, ensure_ascii=False),
+            json.dumps({"variants": [rejected]}, ensure_ascii=False),
+        ),
     ]
 
 
@@ -236,8 +265,35 @@ def _from_reference(ref: dict) -> list[dict]:
     why = notes or style.get("style_summary") or "creator liked this short's editing"
     follow = " ".join(rules[:4]) if rules else why
     violate = "Ignore house style: long intro title card, no captions, slow scenery B-roll."
-    a = {"label": "A", "concept": follow, "hook_rationale": style.get("hook_technique", ""), "shots": []}
-    b = {"label": "B", "concept": violate, "hook_rationale": "title card intro", "shots": []}
+    a = {
+        "label": "A",
+        "concept": follow,
+        "hook_rationale": style.get("hook_technique", ""),
+        "shots": [
+            {
+                "video_index": 0, "start_sec": 0, "end_sec": 3,
+                "role": "hook", "reason": style.get("hook_technique") or "cold open",
+                "caption": "", "caption_style": "emphasis", "fx": "punch_in",
+            },
+            {
+                "video_index": 0, "start_sec": 8, "end_sec": 14,
+                "role": "payoff", "reason": "deliver the promised moment",
+                "caption": "", "caption_style": "pop", "fx": "none",
+            },
+        ],
+    }
+    b = {
+        "label": "B",
+        "concept": violate,
+        "hook_rationale": "title card intro",
+        "shots": [
+            {
+                "video_index": 0, "start_sec": 0, "end_sec": 8,
+                "role": "hook", "reason": "slow title card",
+                "caption": "", "caption_style": "none", "fx": "none",
+            },
+        ],
+    }
     judge_user = (
         f"Creator note on a reference they like: {why}\n\n"
         "Candidate edits:\n" + json.dumps([a, b], ensure_ascii=False)
@@ -248,86 +304,20 @@ def _from_reference(ref: dict) -> list[dict]:
         "Available moments:\n"
         '[{"video_index":0,"start_sec":0,"end_sec":4,"description":"peak action"},'
         '{"video_index":0,"start_sec":8,"end_sec":14,"description":"payoff"}]\n\n'
-        f"Design exactly {config.VARIANTS_PER_JOB} DIFFERENT shot plans."
+        "Write ONE shot plan that matches the house style."
     )
-    writer_out = {
-        "variants": [
-            {
-                "label": "A",
-                "concept": style.get("style_summary") or follow,
-                "hook_rationale": style.get("hook_technique") or "cold open",
-                "shots": [
-                    {
-                        "video_index": 0, "start_sec": 0, "end_sec": 3,
-                        "role": "hook", "reason": style.get("hook_technique") or "cold open",
-                        "caption": "", "caption_style": "none",
-                    },
-                    {
-                        "video_index": 0, "start_sec": 8, "end_sec": 14,
-                        "role": "payoff", "reason": "deliver the promised moment",
-                        "caption": "", "caption_style": "emphasis",
-                    },
-                ],
-            },
-            {
-                "label": "B",
-                "concept": "Same house style, alternate moment order",
-                "hook_rationale": style.get("hook_technique") or "cold open",
-                "shots": [
-                    {
-                        "video_index": 0, "start_sec": 0, "end_sec": 4,
-                        "role": "hook", "reason": "alternate hook trim",
-                        "caption": "", "caption_style": "normal",
-                    },
-                    {
-                        "video_index": 0, "start_sec": 8, "end_sec": 13,
-                        "role": "payoff", "reason": "tighter payoff",
-                        "caption": "", "caption_style": "emphasis",
-                    },
-                ],
-            },
-        ]
-    }
     sid = ref.get("url") or ""
     return [
-        {
-            "kind": "judge",
-            "source": "reference",
-            "source_id": sid,
-            "messages": [
-                {"role": "system", "content": JUDGE_SYSTEM},
-                {"role": "user", "content": judge_user},
-                {"role": "assistant", "content": json.dumps(
-                    _verdict_for("A", why, [a, b]), ensure_ascii=False
-                )},
-            ],
-        },
-        {
-            "kind": "writer",
-            "source": "reference",
-            "source_id": sid,
-            "messages": [
-                {"role": "system", "content": writer_system()},
-                {"role": "user", "content": writer_user},
-                {"role": "assistant", "content": json.dumps(writer_out, ensure_ascii=False)},
-            ],
-        },
-        {
-            "kind": "style",
-            "source": "reference",
-            "source_id": sid,
-            "messages": [
-                {"role": "system", "content": JUDGE_SYSTEM},
-                {"role": "user", "content": (
-                    "Why is this short good, and what editing style should xlog copy?\n"
-                    f"notes: {notes}\n"
-                    f"analysis: {json.dumps(style, ensure_ascii=False)}"
-                )},
-                {"role": "assistant", "content": json.dumps(
-                    _verdict_for("A", why, [a, b]), ensure_ascii=False
-                )},
-            ],
-        },
+        _dpo_row(
+            "judge", "reference", sid, JUDGE_SYSTEM, judge_user,
+            json.dumps(_verdict_for("A", why, [a, b]), ensure_ascii=False),
+            json.dumps(_verdict_for("B", "violates the reference style", [a, b]), ensure_ascii=False),
+        ),
+        _dpo_row(
+            "writer", "reference", sid, writer_system(), writer_user,
+            json.dumps({"variants": [a]}, ensure_ascii=False),
+            json.dumps({"variants": [b]}, ensure_ascii=False),
+        ),
     ]
 
 

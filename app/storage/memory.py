@@ -27,13 +27,16 @@ DB_PATH: Path = config.DATA_DIR / "xlog_memory.db"
 _lock = threading.RLock()
 _initialized = False
 _migrate_files = True
+_force_sqlite = False
 
 
 def init(path: Path | None = None, *, migrate: bool = True, force_sqlite: bool = False) -> None:
     """Open (and create) the memory DB. Safe to call repeatedly."""
-    global DB_PATH, _initialized, _migrate_files
+    global DB_PATH, _initialized, _migrate_files, _force_sqlite
     with _lock:
-        if supabase_store.enabled() and not force_sqlite:
+        if force_sqlite:
+            _force_sqlite = True
+        if supabase_store.enabled() and not _force_sqlite:
             if not _initialized:
                 from app.storage import sync_supabase
                 sync_supabase.sync_if_needed()
@@ -44,6 +47,10 @@ def init(path: Path | None = None, *, migrate: bool = True, force_sqlite: bool =
             _initialized = False
         _migrate_files = migrate
         _ensure_locked()
+
+
+def _use_cloud() -> bool:
+    return supabase_store.enabled() and not _force_sqlite
 
 
 def _ensure_locked() -> None:
@@ -171,7 +178,7 @@ def _row_to_rubric(row: sqlite3.Row) -> dict:
 
 def load_rubric() -> dict | None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.load_rubric()
     with _lock, _connect() as conn:
         row = conn.execute(
@@ -183,7 +190,7 @@ def load_rubric() -> dict | None:
 def save_rubric(rubric: dict, source: str = "unknown") -> None:
     """Append a rubric snapshot and sync preferences (bump only newly added)."""
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.save_rubric(rubric, source=source)
     now = int(time.time())
     with _lock, _connect() as conn:
@@ -234,7 +241,7 @@ def record_feedback(
     rubric_version: int | None,
 ) -> None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.record_feedback(
             job_id, user_choice, user_comment, judge_winner, agreement,
             variants, judge_verdict, rubric_version,
@@ -269,7 +276,7 @@ def record_reference(
     ts: int | None = None,
 ) -> None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.record_reference(
             url, notes, file_path, style, rubric_version, ts=ts,
         )
@@ -303,7 +310,7 @@ def record_reference(
 def list_references() -> list[dict]:
     """Return records in the same shape the JSONL log / frontend already use."""
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.list_references()
     with _lock, _connect() as conn:
         rows = conn.execute(
@@ -334,7 +341,7 @@ def list_references() -> list[dict]:
 
 def load_form() -> dict | None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.load_form()
     with _lock, _connect() as conn:
         row = conn.execute(
@@ -352,7 +359,7 @@ def load_form() -> dict | None:
 
 def save_form(form: dict) -> None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.save_form(form)
     with _lock, _connect() as conn:
         conn.execute(
@@ -372,7 +379,7 @@ def save_form(form: dict) -> None:
 
 def list_feedback() -> list[dict]:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.list_feedback()
     with _lock, _connect() as conn:
         rows = conn.execute(
@@ -398,7 +405,7 @@ def list_feedback() -> list[dict]:
 
 def replace_ft_examples(examples: list[dict]) -> None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.replace_ft_examples(examples)
     now = int(time.time())
     with _lock, _connect() as conn:
@@ -420,7 +427,7 @@ def replace_ft_examples(examples: list[dict]) -> None:
 
 def list_ft_examples() -> list[dict]:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.list_ft_examples()
     with _lock, _connect() as conn:
         rows = conn.execute(
@@ -446,7 +453,7 @@ def save_ft_job(
     error: str = "",
 ) -> None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.save_ft_job(
             openai_job_id, status, model, example_count, fingerprint, error=error,
         )
@@ -470,7 +477,7 @@ def save_ft_job(
 
 def latest_ft_job() -> dict | None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.latest_ft_job()
     with _lock, _connect() as conn:
         row = conn.execute(
@@ -481,7 +488,7 @@ def latest_ft_job() -> dict | None:
 
 def set_active_ft_model(model: str, job_id: str | None) -> None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.set_active_ft_model(model, job_id)
     with _lock, _connect() as conn:
         conn.execute(
@@ -495,7 +502,7 @@ def set_active_ft_model(model: str, job_id: str | None) -> None:
 
 def get_active_ft_model() -> str | None:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.get_active_ft_model()
     with _lock, _connect() as conn:
         row = conn.execute("SELECT model FROM ft_active WHERE id = 1").fetchone()
@@ -505,7 +512,7 @@ def get_active_ft_model() -> str | None:
 def list_preferences() -> list[dict]:
     """Preferences ordered by how often they have been reinforced."""
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.list_preferences()
     with _lock, _connect() as conn:
         rows = conn.execute(
@@ -518,7 +525,7 @@ def list_preferences() -> list[dict]:
 
 def stats() -> dict:
     init()
-    if supabase_store.enabled():
+    if _use_cloud():
         return supabase_store.stats()
     with _lock, _connect() as conn:
         def _count(table: str) -> int:
