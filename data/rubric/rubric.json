@@ -1,0 +1,66 @@
+{
+  "version": 5,
+  "owner": "xlog baseline — mainstream shorts conventions + pilot creator references (LoL gameplay commentary, live-action narrative, movie-clip recut, talking-head interview summary)",
+  "criteria": [
+    {
+      "name": "hook_strength",
+      "weight": 25,
+      "description": "The opening must stop the scroll immediately: cold-open on the highest-action / highest-emotion moment with no title card or pre-roll, and land the first caption line within the first ~0.5s as an unresolved claim or question that only completes in the next line. For live-action narrative footage, a peak-emotion face plus visible physical evidence (bruise, grip, tears) beats a detail/object insert as the 0s frame. For dialogue-driven clip recuts AND talking-head interview material, an accepted alternative is a stacked hook: three to four escalating verdicts or variations of the same shocking line ('넌 해고야' → '해고야' → '자넨 해고됐어'; '아니요' → '대다수는 뒤처진다' → '우린 준비 안 됐다') with no setup, capped by a flash-frame reset. A single provocative one-liner with no second punch scores lower than a stack, because the stack forces a judgment before the viewer can leave. Judged over the first 3 seconds, but credit the full stack when it runs to ~8s; speaker credentials and context belong after the stack, not inside it."
+    },
+    {
+      "name": "mainstream_convention",
+      "weight": 20,
+      "description": "Follows proven, broadly appealing Shorts/Reels conventions for caption placement, structure, readability, and frame hygiene. Safe beats experimental — except that the creator's references establish accepted house forms: (a) narration-subtitle-driven, letterboxed gameplay commentary, (b) dialogue-driven clip recuts with emotion-color-coded subtitles at face level, flash-frame/whip-blur pivots, and asterisked prop labels, and (c) talking-head interview summaries where 3–5s shots are acceptable when each carries a new spoken claim. Do not penalize long uncut takes, 16:9-in-9:16 letterboxing, multi-color captions, or non-white caption text on their own; in dialogue recuts the expected shot length is still 0.8–1.5s. Hard readability defect: any burned-in subtitle from the SOURCE footage that survives into the edit, especially half-cropped or clipped by the 9:16 frame — the crop, mask, or shot choice must remove it so only the edit's own captions are readable. Overlapping or competing text layers count against this criterion even when everything else is clean."
+    },
+    {
+      "name": "instruction_fit",
+      "weight": 20,
+      "description": "Faithfully realizes the user's free-form request (caption tone, effects, mood). When the brief asks for subtitles, near-every-beat captioning is expected and a run of silent shots is a real miss. When the brief asks for '핵심만 요약', pick the one thread that occupies most of the source and land it — exhaustive chronological coverage of every topic is a miss, not thoroughness. Ignore this criterion (redistribute judgment) when no request was given."
+    },
+    {
+      "name": "pacing",
+      "weight": 14,
+      "description": "No dead air and energy rising toward the payoff. Perceived pace may come from subtitle turnover (one short line every 1–2s) over long uncut takes rather than from frequent hard cuts; for dialogue-driven footage the reverse is expected — cut on every completed spoken line so one subtitle equals one shot at 0.8–1.5s each. For talking-head summaries, rising information density (concrete harm → new reveal → verdict → urgency) counts as rising energy even at 3–5s shots; a flat chronological list of topic changes does not. Deliberate rhythm breaks are welcome when they set up a payoff: a mid-roll still interlude, one caption-free breath before the payoff, or the same caption held across two consecutive shots on an emotional beat. Tighter cutting alone does not outrank a clearer, better-grounded arc."
+    },
+    {
+      "name": "narrative_clarity",
+      "weight": 12,
+      "description": "One clear thread from hook to payoff; no confusing jumps. The strongest shape is question → clue → reveal: the hook poses a question, each following shot releases one new visible clue, and the payoff answers it with a concrete detail rather than restating the premise. The hook and the payoff must belong to the same thread — opening on one provocation and closing on an unrelated conclusion is a clarity defect. Every caption must be anchored to something actually present in the frame — a visible detail, or the line the on-screen speaker is actually delivering — while inferred or atmospheric assertions the footage does not show are a clarity defect, not a stylistic choice. Silent visual interludes and caption-free outro shots are fine when they restate or release the point rather than introduce a new one."
+    },
+    {
+      "name": "moment_selection",
+      "weight": 9,
+      "description": "The genuinely best raw moments were used, not filler. Prefer shots that contain concrete, readable evidence (faces at peak emotion, hands, marks, revealed names/objects, props that raise stakes, numbers and reveals in speech) over connective coverage such as low-angle feet, wide walking, or empty-space shots. Interesting fragments that do not converge on one claim score lower than fewer shots that all serve the thread. When two takes carry the same line, prefer the one whose frame is free of source-burned subtitles."
+    }
+  ],
+  "preferences": [
+    "Never let the source footage's own burned-in subtitles appear in the edit — cut around them, crop or mask the subtitle band out of frame, or pick a take without them; a half-cropped original caption is a hard defect, not a cosmetic nitpick.",
+    "When 9:16-cropping 16:9 interview footage that carries burned-in subtitles, choose the crop so the source subtitle band falls outside the frame and put the edit's own captions in the freed space.",
+    "Open cold on the highest-action / highest-emotion moment of the clip and place the first subtitle line within the first 0.5 seconds, phrased as an incomplete claim or question that only resolves later.",
+    "Stack three to four escalating variations of the same shocking phrase or verdict across different speakers in the first 8 seconds before giving any context.",
+    "For interview / talking-head material, throw out the 화두 first: lead with the speaker's most decisive verdict lines and defer credentials (school, major, title) to a single setup shot after the hook stack.",
+    "When asked to summarize 'only the essentials', follow the single thread that dominates the source from hook to landing instead of covering every topic chronologically.",
+    "For live-action narrative footage, structure the edit as question → clue → reveal: hook on a peak-emotion face close-up that poses the question, release one new visible clue per shot, and pay it off with a concrete detail shot that answers it.",
+    "Caption only what is literally visible in the frame or actually spoken by the person on screen; avoid interpretive or atmospheric lines that assert things the footage does not show.",
+    "When the brief asks for subtitles, keep a caption on nearly every beat; reserve silent shots for the one breath before the payoff and the final loop cut.",
+    "For dialogue-driven clip recuts, cut on every completed spoken line so one subtitle equals one shot, keeping most shots between 0.8 and 1.5 seconds.",
+    "Hold the same caption across two consecutive shots on emotional beats to slow the perceived rhythm without stopping the cuts.",
+    "Color-code subtitles by emotional charge — red for verdicts and shocks, yellow for neutral narration or gripes, lime green for sarcasm or softness, pale blue for resignation — and never mix more than one color meaning per line.",
+    "Recolor only the single key noun or number inside a line (price, name, verdict word) so the payload word pops out of the sentence.",
+    "Center dialogue captions horizontally at mouth/chin height over the speaker's face with a soft dark glow behind the text instead of a solid box, keeping each line to one short readable clause and the eyes unblocked.",
+    "Insert a one-beat white flash frame or whip-blur cut at each structural pivot to reset attention between hook, body, and turn.",
+    "Explain on-screen props with a short asterisked label caption (*압류 통보*) instead of spending a narration line on them.",
+    "Keep gameplay in long uncut takes and generate pace with subtitle turnover instead of cuts — swap one short caption line every 1–2 seconds, one spoken clause per line.",
+    "For gameplay, burn captions as bold white text on a soft dark translucent plate, centered in the lower third and above the game HUD, never covering the minimap or item bar.",
+    "Letterbox the 16:9 gameplay in a 9:16 frame and keep the crop centered on the champion so the black bars double as caption space.",
+    "Insert one silent full-bleed meme/still interlude around the 55–70% mark that visually restates the narration's joke, holding each still 2–3 seconds.",
+    "Join interlude stills with 0.5–1s dip-to-black fades rather than hard cuts, and drop all captions during the interlude so the image carries the gag.",
+    "Drop captions during the peak action beat so the payoff can breathe.",
+    "End gameplay edits on a short self-deprecating reaction caption over live action and fade to black mid-play instead of using an outro card.",
+    "End clip recuts on a wide, caption-free shot for the final 3–4 seconds so the music and image resolve without text.",
+    "End an argument-thread summary on the line that closes that argument (verdict / urgency), not on a philosophically pleasant but off-thread closer.",
+    "Keep a driving, constant-pulse music bed under montage sections so the cuts land on the beat.",
+    "Avoid emojis and on-screen title cards."
+  ],
+  "notes": "v5 — the creator picked A, matching both judges, and gave one reason plus one hard complaint. Reason: A '맨처음에 화두를 던지고 사람들의 주목을 이끈다' — the stacked-verdict opening on talking-head interview material is confirmed as the creator's preferred hook, so hook_strength stays the heaviest criterion at 25 and its description now names interview/talking-head footage alongside clip recuts as valid stack material, adds the Korean example from A, and states explicitly that a single provocation with no second punch ranks below a stack, with credentials placed after the stack. Complaint (new, concrete, and the main deliverable of this round): the render let the source video's own burned-in subtitles through, cropped mid-line, and it was uncomfortable to watch — the fix the creator specified is to remove those subtitles or cut/crop around that region. This is a readability/frame-hygiene rule, so mainstream_convention now carries it as a named hard defect and its weight rises 18 → 20; the cost is taken from pacing (15 → 14) and moment_selection (10 → 9), both of which the creator did not comment on, and moment_selection now includes a tie-break toward takes whose frames are free of source captions. Two preferences added for it (never let source burned-in captions survive; choose the 9:16 crop so the source subtitle band falls out of frame and reuse that space for our own captions). Secondary, weaker signals that were accepted without complaint: A's 3–5s shots in an interview summary were fine, so mainstream_convention and pacing now recognize talking-head summaries as a fourth house form where rising information density substitutes for the 0.8–1.5s dialogue-recut cut rate rather than being penalized; instruction_fit and narrative_clarity gained the '핵심만 요약 = one dominant thread' and 'hook and payoff must share the thread' clauses, which is what separated A from B for both judges. The judge's further suggestions (tighten each hook variant to 1.2–1.5s; recolor verdict words red and numbers yellow; drop the off-thread closing shot) were NOT promoted to criteria since the creator did not endorse them; only the closer note was distilled as a preference because it follows directly from the thread rule the creator's own choice implies. Everything else carried over unchanged."
+}

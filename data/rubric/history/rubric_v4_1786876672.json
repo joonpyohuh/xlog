@@ -1,0 +1,55 @@
+{
+  "version": 4,
+  "owner": "xlog baseline — mainstream shorts conventions + pilot creator reference (LoL commentary style; subtitle-sync reference added v4)",
+  "criteria": [
+    {
+      "name": "hook_strength",
+      "weight": 25,
+      "description": "The opening must stop the scroll immediately: cold-open on the highest-action / highest-emotion moment with no title card, logo, self-introduction, or pre-roll, and land the first caption line within the first ~0.5s. Two accepted hook forms: (a) an unresolved claim or question that only completes in the next line, or (b) a bold, complete thesis claim ('this champion is the strongest late-game top') stated over already-in-progress action that the footage immediately proves. For live-action narrative footage, a peak-emotion face plus visible physical evidence (bruise, grip, tears) beats a detail/object insert as the 0s frame. Judged over the first 3 seconds."
+    },
+    {
+      "name": "mainstream_convention",
+      "weight": 18,
+      "description": "Follows proven, broadly appealing Shorts/Reels conventions for caption placement, structure, and readability. Safe beats experimental — except that the creator's reference establishes narration-subtitle-driven gameplay commentary as an accepted house form; do not penalize on their own either a centered vertical crop that keeps the game HUD readable or 16:9-in-9:16 letterboxing. Gameplay shots of 3–5s are acceptable, and expected, when each one carries new visible information and the cut lands on a sentence boundary."
+    },
+    {
+      "name": "instruction_fit",
+      "weight": 20,
+      "description": "Faithfully realizes the user's free-form request (caption tone, effects, mood). When the brief asks for subtitles, near-every-beat captioning is expected and a run of silent shots is a real miss — but deliberate short caption gaps (0.5–1.5s) during narration pauses, in-game banners, or the peak beat are intentional craft, not a miss. Ignore this criterion (redistribute judgment) when no request was given."
+    },
+    {
+      "name": "pacing",
+      "weight": 15,
+      "description": "No dead air and energy rising toward the payoff. Perceived pace is narration-led: subtitles swap exactly on spoken clause boundaries (each caption held ~2–4s) and cuts land on sentence boundaries with shots running ~3–5s, so text and picture turn over together. Caption/audio sync is the primary pacing lever — text that leads the audio or lingers past it is a defect even if the cut rhythm is good. Deliberate rhythm breaks (a mid-roll still interlude, one caption-free breath before the payoff) are welcome when they set up a payoff. Tighter cutting alone does not outrank a clearer, better-grounded arc."
+    },
+    {
+      "name": "narrative_clarity",
+      "weight": 12,
+      "description": "One clear thread from hook to payoff; no confusing jumps. The strongest shape is question → clue → reveal: the hook poses a question or thesis, each following shot releases one new visible clue, and the payoff answers it with a concrete detail rather than restating the premise. Every caption must be anchored to something actually visible in the frame — inferred or atmospheric assertions the footage does not show are a clarity defect, not a stylistic choice. Silent visual interludes are fine when they restate the narration's point rather than introduce a new one."
+    },
+    {
+      "name": "moment_selection",
+      "weight": 10,
+      "description": "The genuinely best raw moments were used, not filler. Prefer shots that contain concrete, readable evidence (faces at peak emotion, hands, marks, revealed names/objects, HUD gold/level/item state) over connective coverage such as low-angle feet, wide walking, or empty-space shots."
+    }
+  ],
+  "preferences": [
+    "Open on frame one over already-in-progress action with the first caption inside 0.5 seconds — either a bold thesis claim the footage instantly proves or an unresolved claim that only completes in the next line — with no intro, logo, or self-introduction.",
+    "For live-action narrative footage, structure the edit as question → clue → reveal: hook on a peak-emotion face close-up that poses the question, release one new visible clue per shot, and pay it off with a concrete detail shot that answers it.",
+    "Caption only what is literally visible in the frame (a bruise, a hand gripping an arm, a name tattooed on skin); avoid interpretive or atmospheric lines that assert things the footage does not show.",
+    "Choose footage that literally demonstrates the sentence being narrated, and order clips chronologically (early game → late game) so the argument escalates toward the payoff.",
+    "Cut only on sentence or clause boundaries so every shot change coincides with a new narration line, keeping gameplay shots roughly 3–5 seconds.",
+    "Swap each subtitle exactly on the spoken clause boundary and hold it 2–4 seconds — never let text appear before the audio or linger past it.",
+    "Limit each caption to two lines of roughly 8–16 characters, breaking lines at natural grammatical phrase points instead of mid-phrase.",
+    "Burn captions as bold white text with a heavy dark outline or drop shadow, hard-cut in and out with no animation, centered in the lower third above the game HUD and never covering the minimap, item bar, or scoreboard.",
+    "Insert deliberate 0.5–1.5s caption gaps during narration pauses, whenever the game shows its own banner (kill, tower, level-up), and on the peak action beat so the on-screen event reads cleanly.",
+    "Pin a fixed subject anchor such as the champion or topic icon at top-center for the entire video as a constant identity cue.",
+    "Frame gameplay 9:16 either by cropping vertically with the champion centered or by letterboxing the 16:9 image, keeping the HUD readable and using any black bars as caption space.",
+    "When the brief asks for subtitles, keep a caption on nearly every beat and reserve silence for the planned gaps and the final loop cut.",
+    "Insert one silent full-bleed meme/still interlude around the 55–70% mark that visually restates the narration's joke, holding each still 2–3 seconds.",
+    "Join interlude stills with 0.5–1s dip-to-black fades rather than hard cuts, and drop all captions during the interlude so the image carries the gag.",
+    "End on a caption over a final decisive clip — a takeaway generalization or a short self-deprecating reaction — and fade out mid-play instead of using an outro card or CTA.",
+    "Avoid emojis and on-screen title cards."
+  ],
+  "notes": "v4 — merged the pilot creator's reference short https://youtube.com/shorts/Zcw78KRcF9g?si=00S0zhk--Ss-X1pH (Korean LoL 'Dr. Mundo top' champion-guide short, ~56s, vertically cropped gameplay + voiceover). Creator note: '영상의 자막의 타이밍과 싱크가 잘 맞음. 그걸 학습' — the thing to learn is caption timing/sync, so pacing now names caption/audio sync as the primary pacing lever and treats early or lingering text as a defect. What the reference taught: cuts land on sentence/clause boundaries with ~3–5s shots; ~14 caption blocks over 56s (one text beat every ~3.5s), each held 2–4s and hard-cut with no animation; max two lines of ~8–16 chars broken at phrase boundaries; deliberate 0.5–1.5s blanks during pauses and over in-game banners; a fixed champion icon pinned top-center as an identity anchor; HUD deliberately left readable as evidence; frame-one thesis caption over mid-action with no intro; closing takeaway generalization instead of a CTA. Criterion edits made only where the reference contradicted v3: hook_strength now accepts a complete bold thesis claim (not just an unresolved claim); pacing dropped the 'long uncut takes + one line every 1–2s' model in favor of clause-synced swaps every 2–4s over 3–5s shots; mainstream_convention widened the acceptable shot length to 3–5s and now accepts centered vertical crop alongside letterboxing; instruction_fit clarifies that short deliberate caption gaps are craft, not a caption-density miss. Weights unchanged (single reference, sync-focused). Preferences: the old 'translucent plate' caption spec was replaced by the reference's heavy dark outline/drop shadow, the letterbox rule generalized to include vertical crop, and the two ending rules merged; six new rules added (clause-boundary cutting, clause-synced 2–4s captions, two-line/8–16-char limit, deliberate caption gaps, top-center subject anchor, footage-demonstrates-narration with chronological escalation). Live-action narrative rules from v3 retained unchanged since this reference did not exercise them."
+}

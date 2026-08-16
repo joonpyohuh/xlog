@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "owner": "xlog baseline — mainstream shorts conventions + pilot creator reference (LoL commentary style)",
+  "criteria": [
+    {
+      "name": "hook_strength",
+      "weight": 25,
+      "description": "The opening must stop the scroll immediately: cold-open on the highest-action moment with no title card or pre-roll, and land the first caption line within the first ~0.5s as an unresolved claim that only completes in the next line. Judged over the first 3 seconds."
+    },
+    {
+      "name": "mainstream_convention",
+      "weight": 20,
+      "description": "Follows proven, broadly appealing Shorts/Reels conventions for caption placement, structure, and readability. Safe beats experimental — except that the creator's reference establishes narration-subtitle-driven, letterboxed gameplay commentary as an accepted house form; do not penalize long uncut takes or 16:9-in-9:16 letterboxing on their own."
+    },
+    {
+      "name": "instruction_fit",
+      "weight": 20,
+      "description": "Faithfully realizes the user's free-form request (caption tone, effects, mood). Ignore this criterion (redistribute judgment) when no request was given."
+    },
+    {
+      "name": "pacing",
+      "weight": 15,
+      "description": "No dead air and energy rising toward the payoff. Perceived pace may come from subtitle turnover (one short line every 1–2s) over long uncut takes rather than from frequent hard cuts; deliberate rhythm breaks (e.g., a mid-roll still interlude) are welcome when they set up a payoff."
+    },
+    {
+      "name": "narrative_clarity",
+      "weight": 10,
+      "description": "One clear thread from hook to payoff; no confusing jumps. Silent visual interludes are fine when they restate the narration's point rather than introduce a new one."
+    },
+    {
+      "name": "moment_selection",
+      "weight": 10,
+      "description": "The genuinely best raw moments were used, not filler."
+    }
+  ],
+  "preferences": [
+    "Open cold on the highest-action moment of the clip and place the first subtitle line within the first 0.5 seconds, phrased as an incomplete claim that only resolves in the next line.",
+    "Keep gameplay in long uncut takes and generate pace with subtitle turnover instead of cuts — swap one short caption line every 1–2 seconds, one spoken clause per line.",
+    "Burn captions as bold white text on a soft dark translucent plate, centered in the lower third and above the game HUD, never covering the minimap or item bar.",
+    "Letterbox the 16:9 gameplay in a 9:16 frame and keep the crop centered on the champion so the black bars double as caption space.",
+    "Insert one silent full-bleed meme/still interlude around the 55–70% mark that visually restates the narration's joke, holding each still 2–3 seconds.",
+    "Join interlude stills with 0.5–1s dip-to-black fades rather than hard cuts, and drop all captions during the interlude so the image carries the gag.",
+    "Drop captions during the peak action beat so the payoff can breathe.",
+    "End on a short self-deprecating reaction caption over live action and fade to black mid-play instead of using an outro card.",
+    "Avoid emojis and on-screen title cards."
+  ],
+  "notes": "v2 — merged the pilot creator's reference style: https://youtube.com/shorts/eWQMnGwj0Cg?si=yT5F1SphInJPgJRL (Korean LoL gameplay commentary short). Learned: the creator's house style is narration-subtitle-driven rather than cut-driven — letterboxed 16:9 gameplay in long uncut takes, bold white captions on a translucent plate in the lower third above the HUD swapping every 1–2s, a cold open with the first line inside 0.5s as an unresolved hook, one silent full-bleed meme-still interlude mid-roll (stills held 2–3s, joined by 0.5–1s dip-to-black fades, no captions) as a visual punchline, and a close on a self-deprecating caption fading to black mid-action with no outro card. Criterion edits: hook_strength now specifies the cold open and sub-second first caption; pacing no longer requires frequent hard cuts and accepts subtitle turnover plus deliberate rhythm breaks; mainstream_convention now exempts letterboxing and long takes from the 'safe over experimental' penalty; narrative_clarity clarifies that silent interludes must restate, not extend, the thread. Weights unchanged."
+}

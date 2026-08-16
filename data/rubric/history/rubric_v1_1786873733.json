@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "owner": "pilot user",
+  "criteria": [
+    {
+      "name": "hook_strength",
+      "weight": 30,
+      "description": "The first 3 seconds must make the viewer stop scrolling."
+    },
+    {
+      "name": "narrative_clarity",
+      "weight": 25,
+      "description": "One clear thread from hook to payoff; no confusing jumps."
+    },
+    {
+      "name": "pacing",
+      "weight": 20,
+      "description": "Rhythmic cuts, no dead air, energy rises toward the payoff."
+    },
+    {
+      "name": "emotional_impact",
+      "weight": 15,
+      "description": "The short leaves a feeling: laughter, awe, tension, warmth."
+    },
+    {
+      "name": "moment_selection",
+      "weight": 10,
+      "description": "The genuinely best raw moments were used, not filler."
+    }
+  ],
+  "preferences": [],
+  "notes": "Seed rubric. Will be refined from the pilot user's evaluations."
+}

@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "source": "seed (LLM-distilled conventions of IG Reels / YT Shorts)",
+  "structure": [
+    {
+      "name": "hook",
+      "window_sec": [
+        0,
+        3
+      ],
+      "rule": "Open with the single most arresting moment or claim. No intros, no logos, no context-setting. The first frame must already be interesting."
+    },
+    {
+      "name": "setup",
+      "window_sec": [
+        3,
+        10
+      ],
+      "rule": "Minimal context so the payoff lands. One idea only."
+    },
+    {
+      "name": "development",
+      "window_sec": [
+        10,
+        45
+      ],
+      "rule": "Escalate: each cut adds new information or raises tension. Cut on action; keep average shot length 1.5-4s."
+    },
+    {
+      "name": "payoff",
+      "window_sec": [
+        45,
+        58
+      ],
+      "rule": "Deliver the promised moment. This is what the hook sold."
+    },
+    {
+      "name": "ending",
+      "window_sec": [
+        58,
+        60
+      ],
+      "rule": "End abruptly right after the payoff (loop-friendly), then the branding card follows."
+    }
+  ],
+  "global_rules": [
+    "Vertical 9:16, subject centered in the safe area (UI overlays cover edges).",
+    "Never let more than ~3 seconds pass without visual change.",
+    "Keep the original audio of chosen moments; it carries authenticity.",
+    "One narrative thread per short. Discard good moments that don't serve it.",
+    "Prefer moments with faces, motion, or emotional peaks over scenery.",
+    "The video should make sense with the sound off."
+  ]
+}

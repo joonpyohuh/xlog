@@ -1,0 +1,17 @@
+# secrets
+.env
+
+# runtime data
+data/uploads/
+data/jobs/
+data/tmp/
+data/references/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/

@@ -1,0 +1,61 @@
+{
+  "version": 4,
+  "owner": "xlog baseline — mainstream shorts conventions + pilot creator references (LoL gameplay commentary, live-action narrative, movie-clip recut)",
+  "criteria": [
+    {
+      "name": "hook_strength",
+      "weight": 25,
+      "description": "The opening must stop the scroll immediately: cold-open on the highest-action / highest-emotion moment with no title card or pre-roll, and land the first caption line within the first ~0.5s as an unresolved claim or question that only completes in the next line. For live-action narrative footage, a peak-emotion face plus visible physical evidence (bruise, grip, tears) beats a detail/object insert as the 0s frame. For dialogue-driven clip recuts, an accepted alternative is a stacked hook: three to four escalating variations of the same shocking line ('넌 해고야' → '해고야' → '자넨 해고됐어') delivered by different speakers with no setup, capped by a flash-frame reset. Judged over the first 3 seconds, but credit the full stack when it runs to ~8s."
+    },
+    {
+      "name": "mainstream_convention",
+      "weight": 18,
+      "description": "Follows proven, broadly appealing Shorts/Reels conventions for caption placement, structure, and readability. Safe beats experimental — except that the creator's references establish two accepted house forms: (a) narration-subtitle-driven, letterboxed gameplay commentary, and (b) dialogue-driven clip recuts with emotion-color-coded subtitles at face level, flash-frame/whip-blur pivots, and asterisked prop labels. Do not penalize long uncut takes, 16:9-in-9:16 letterboxing, multi-color captions, or non-white caption text on their own. Slightly long shots (3–4.5s) are acceptable in narration forms when each carries new visible information; in dialogue recuts the expected shot length is 0.8–1.5s."
+    },
+    {
+      "name": "instruction_fit",
+      "weight": 20,
+      "description": "Faithfully realizes the user's free-form request (caption tone, effects, mood). When the brief asks for subtitles, near-every-beat captioning is expected and a run of silent shots is a real miss. Ignore this criterion (redistribute judgment) when no request was given."
+    },
+    {
+      "name": "pacing",
+      "weight": 15,
+      "description": "No dead air and energy rising toward the payoff. Perceived pace may come from subtitle turnover (one short line every 1–2s) over long uncut takes rather than from frequent hard cuts; for dialogue-driven footage the reverse is expected — cut on every completed spoken line so one subtitle equals one shot at 0.8–1.5s each. Deliberate rhythm breaks are welcome when they set up a payoff: a mid-roll still interlude, one caption-free breath before the payoff, or the same caption held across two consecutive shots on an emotional beat to slow the felt rhythm without stopping the cuts. Tighter cutting alone does not outrank a clearer, better-grounded arc."
+    },
+    {
+      "name": "narrative_clarity",
+      "weight": 12,
+      "description": "One clear thread from hook to payoff; no confusing jumps. The strongest shape is question → clue → reveal: the hook poses a question, each following shot releases one new visible clue, and the payoff answers it with a concrete detail rather than restating the premise. Every caption must be anchored to something actually present in the frame — a visible detail, or the line the on-screen speaker is actually delivering — while inferred or atmospheric assertions the footage does not show are a clarity defect, not a stylistic choice. Silent visual interludes and caption-free outro shots are fine when they restate or release the point rather than introduce a new one."
+    },
+    {
+      "name": "moment_selection",
+      "weight": 10,
+      "description": "The genuinely best raw moments were used, not filler. Prefer shots that contain concrete, readable evidence (faces at peak emotion, hands, marks, revealed names/objects, props that raise stakes) over connective coverage such as low-angle feet, wide walking, or empty-space shots."
+    }
+  ],
+  "preferences": [
+    "Open cold on the highest-action / highest-emotion moment of the clip and place the first subtitle line within the first 0.5 seconds, phrased as an incomplete claim or question that only resolves later.",
+    "Stack three to four escalating variations of the same shocking phrase or verdict across different speakers in the first 8 seconds before giving any context.",
+    "For live-action narrative footage, structure the edit as question → clue → reveal: hook on a peak-emotion face close-up that poses the question, release one new visible clue per shot, and pay it off with a concrete detail shot that answers it.",
+    "Caption only what is literally visible in the frame or actually spoken by the person on screen; avoid interpretive or atmospheric lines that assert things the footage does not show.",
+    "When the brief asks for subtitles, keep a caption on nearly every beat; reserve silent shots for the one breath before the payoff and the final loop cut.",
+    "For dialogue-driven clip recuts, cut on every completed spoken line so one subtitle equals one shot, keeping most shots between 0.8 and 1.5 seconds.",
+    "Hold the same caption across two consecutive shots on emotional beats to slow the perceived rhythm without stopping the cuts.",
+    "Color-code subtitles by emotional charge — red for verdicts and shocks, yellow for neutral narration or gripes, lime green for sarcasm or softness, pale blue for resignation — and never mix more than one color meaning per line.",
+    "Recolor only the single key noun or number inside a line (price, name, verdict word) so the payload word pops out of the sentence.",
+    "Center dialogue captions horizontally at mouth/chin height over the speaker's face with a soft dark glow behind the text instead of a solid box, keeping each line to one short readable clause and the eyes unblocked.",
+    "Insert a one-beat white flash frame or whip-blur cut at each structural pivot to reset attention between hook, body, and turn.",
+    "Explain on-screen props with a short asterisked label caption (*압류 통보*) instead of spending a narration line on them.",
+    "Keep gameplay in long uncut takes and generate pace with subtitle turnover instead of cuts — swap one short caption line every 1–2 seconds, one spoken clause per line.",
+    "For gameplay, burn captions as bold white text on a soft dark translucent plate, centered in the lower third and above the game HUD, never covering the minimap or item bar.",
+    "Letterbox the 16:9 gameplay in a 9:16 frame and keep the crop centered on the champion so the black bars double as caption space.",
+    "Insert one silent full-bleed meme/still interlude around the 55–70% mark that visually restates the narration's joke, holding each still 2–3 seconds.",
+    "Join interlude stills with 0.5–1s dip-to-black fades rather than hard cuts, and drop all captions during the interlude so the image carries the gag.",
+    "Drop captions during the peak action beat so the payoff can breathe.",
+    "End gameplay edits on a short self-deprecating reaction caption over live action and fade to black mid-play instead of using an outro card.",
+    "End clip recuts on a wide, caption-free shot for the final 3–4 seconds so the music and image resolve without text.",
+    "Keep a driving, constant-pulse music bed under montage sections so the cuts land on the beat.",
+    "Avoid emojis and on-screen title cards."
+  ],
+  "notes": "v4 — merged the creator's second style reference: https://youtube.com/shorts/2rOWUflWQ8w?si=avyaAikg7mpxG8fX (Spider-Man 2 movie-clip recut, Korean retranslated subtitles, 'BURN IT UP' bed, ~35–45 cuts in 52s). Creator's stated interest: 자막 타이밍 및 훅, 자막의 색의 다양성 — subtitle timing, the hook, and color variety in captions. What was learned: (1) a third house form exists — dialogue-driven clip recuts where one subtitle equals one shot at 0.8–1.5s, cut on the punchline of each spoken line, rather than the gameplay form's long uncut takes with rolling subtitles; (2) the hook can be a stacked repetition — three to four escalating variants of the same devastating phrase ('넌 해고야' → '해고야' → '자넨 해고됐어') from different characters with zero setup, closed by a white flash frame at ~8.5s; (3) caption color carries meaning (red = verdict/shock, yellow = neutral narration, green = sarcasm/softness, blue = resignation) and a single key noun or number inside a line gets recolored to spotlight the payload word; (4) dialogue captions sit centered at mouth/chin height over the face with a soft dark glow, not a solid plate and not the lower third; (5) structural pivots are marked with a one-beat white flash or whip blur; (6) the same caption may be held across two cuts to breathe on emotional beats; (7) the outro is a wide, caption-free 3–4s shot. Criterion edits (contradiction-driven only): hook_strength now admits the stacked-repetition hook and lets the stack run to ~8s; mainstream_convention now names clip recuts as an accepted house form and explicitly stops penalizing multi-color and non-white captions, flash-frame pivots, and asterisked prop labels, while setting the 0.8–1.5s shot expectation for dialogue material; pacing now states the inverse cut rule for dialogue-driven footage and adds the held-caption breathing device; narrative_clarity widens 'anchored to what is visible' to also cover the line the on-screen speaker is actually delivering, since retranslated dialogue is evidence-grounded, and blesses the caption-free outro. Weights unchanged — this is one new reference in a different genre, not a re-ranking of what matters. Gameplay-specific preferences were retained but explicitly scoped ('for gameplay') so the new face-level, color-coded caption rule does not collide with the HUD-safe white-on-plate rule."
+}

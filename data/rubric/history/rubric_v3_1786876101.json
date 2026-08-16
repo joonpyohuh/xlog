@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "owner": "xlog baseline — mainstream shorts conventions + pilot creator reference (LoL commentary style)",
+  "criteria": [
+    {
+      "name": "hook_strength",
+      "weight": 25,
+      "description": "The opening must stop the scroll immediately: cold-open on the highest-action / highest-emotion moment with no title card or pre-roll, and land the first caption line within the first ~0.5s as an unresolved claim or question that only completes in the next line. For live-action narrative footage, a peak-emotion face plus visible physical evidence (bruise, grip, tears) beats a detail/object insert as the 0s frame. Judged over the first 3 seconds."
+    },
+    {
+      "name": "mainstream_convention",
+      "weight": 18,
+      "description": "Follows proven, broadly appealing Shorts/Reels conventions for caption placement, structure, and readability. Safe beats experimental — except that the creator's reference establishes narration-subtitle-driven, letterboxed gameplay commentary as an accepted house form; do not penalize long uncut takes or 16:9-in-9:16 letterboxing on their own. Slightly long shots (3–4.5s) are acceptable when each one carries new visible information."
+    },
+    {
+      "name": "instruction_fit",
+      "weight": 20,
+      "description": "Faithfully realizes the user's free-form request (caption tone, effects, mood). When the brief asks for subtitles, near-every-beat captioning is expected and a run of silent shots is a real miss. Ignore this criterion (redistribute judgment) when no request was given."
+    },
+    {
+      "name": "pacing",
+      "weight": 15,
+      "description": "No dead air and energy rising toward the payoff. Perceived pace may come from subtitle turnover (one short line every 1–2s) over long uncut takes rather than from frequent hard cuts; deliberate rhythm breaks (e.g., a mid-roll still interlude, one caption-free breath before the payoff) are welcome when they set up a payoff. Tighter cutting alone does not outrank a clearer, better-grounded arc."
+    },
+    {
+      "name": "narrative_clarity",
+      "weight": 12,
+      "description": "One clear thread from hook to payoff; no confusing jumps. The strongest shape is question → clue → reveal: the hook poses a question, each following shot releases one new visible clue, and the payoff answers it with a concrete detail rather than restating the premise. Every caption must be anchored to something actually visible in the frame — inferred or atmospheric assertions the footage does not show are a clarity defect, not a stylistic choice. Silent visual interludes are fine when they restate the narration's point rather than introduce a new one."
+    },
+    {
+      "name": "moment_selection",
+      "weight": 10,
+      "description": "The genuinely best raw moments were used, not filler. Prefer shots that contain concrete, readable evidence (faces at peak emotion, hands, marks, revealed names/objects) over connective coverage such as low-angle feet, wide walking, or empty-space shots."
+    }
+  ],
+  "preferences": [
+    "Open cold on the highest-action / highest-emotion moment of the clip and place the first subtitle line within the first 0.5 seconds, phrased as an incomplete claim or question that only resolves later.",
+    "For live-action narrative footage, structure the edit as question → clue → reveal: hook on a peak-emotion face close-up that poses the question, release one new visible clue per shot, and pay it off with a concrete detail shot that answers it.",
+    "Caption only what is literally visible in the frame (a bruise, a hand gripping an arm, a name tattooed on skin); avoid interpretive or atmospheric lines that assert things the footage does not show — let the viewer supply the emotion.",
+    "When the brief asks for subtitles, keep a caption on nearly every beat; reserve silent shots for the one breath before the payoff and the final loop cut.",
+    "Keep gameplay in long uncut takes and generate pace with subtitle turnover instead of cuts — swap one short caption line every 1–2 seconds, one spoken clause per line.",
+    "Burn captions as bold white text on a soft dark translucent plate, centered in the lower third and above the game HUD, never covering the minimap or item bar.",
+    "Letterbox the 16:9 gameplay in a 9:16 frame and keep the crop centered on the champion so the black bars double as caption space.",
+    "Insert one silent full-bleed meme/still interlude around the 55–70% mark that visually restates the narration's joke, holding each still 2–3 seconds.",
+    "Join interlude stills with 0.5–1s dip-to-black fades rather than hard cuts, and drop all captions during the interlude so the image carries the gag.",
+    "Drop captions during the peak action beat so the payoff can breathe.",
+    "End on a short self-deprecating reaction caption over live action and fade to black mid-play instead of using an outro card.",
+    "Avoid emojis and on-screen title cards."
+  ],
+  "notes": "v3 — first non-gameplay (live-action narrative) comparison. User picked A, agreeing with the primary judge but for a different stated reason: '조금 더 객관적인 사실을 보여줌' — A's captions and reveals point at things actually visible in frame (bruise, grip, the MATHEW tattoo), while B leans on interpretive/atmospheric lines ('조명은 점점 좁아지고', '도망칠 곳은 없다'). Note this directly contradicts the second opinion, which called A's tattoo reveal speculative; the creator treats a shown detail as fact, so evidence-in-frame outranks a critic's doubt about story inference. Changes: narrative_clarity 10→12 and mainstream_convention 20→18 (small nudge, one data point) to reflect that grounded, evidence-anchored arcs matter more than the safest stylistic template; narrative_clarity now requires every caption to be anchored to visible content and names question→clue→reveal as the preferred shape; moment_selection now explicitly downranks connective coverage (low-angle feet, wide walking); hook_strength adds that a peak-emotion face plus visible physical evidence beats a detail insert at 0s for live-action; instruction_fit and pacing note that near-every-beat captioning is expected when subtitles are briefed and that tighter cutting alone does not outrank a clearer arc. Three new preferences distilled (evidence-only captions, question→clue→reveal structure for live-action, caption density under a subtitle brief); gameplay-specific house-style preferences retained unchanged since they were not exercised here."
+}

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xlog — raw video → shorts</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background:#0d0d0f; color:#eee; font-family:'Segoe UI',system-ui,sans-serif; padding:2rem; max-width:1100px; margin:auto; }
+  h1 { font-weight:300; letter-spacing:.35em; margin-bottom:.3rem; }
+  .sub { color:#888; margin-bottom:2rem; font-size:.9rem; }
+  section { background:#161619; border:1px solid #26262b; border-radius:12px; padding:1.5rem; margin-bottom:1.5rem; }
+  h2 { font-size:1rem; font-weight:600; margin-bottom:1rem; color:#bbb; }
+  input[type=file] { color:#aaa; }
+  button { background:#fff; color:#000; border:0; border-radius:8px; padding:.6rem 1.4rem; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.35; cursor:default; }
+  button.ghost { background:transparent; color:#ccc; border:1px solid #444; }
+  .row { display:flex; gap:1rem; align-items:center; flex-wrap:wrap; }
+  .stage { font-size:.85rem; color:#7fd0ff; }
+  .error { color:#ff7f7f; font-size:.85rem; white-space:pre-wrap; }
+  .variants { display:flex; gap:1.5rem; flex-wrap:wrap; }
+  .variant { flex:1; min-width:320px; background:#101013; border:1px solid #2a2a30; border-radius:10px; padding:1rem; }
+  .variant.recommended { border-color:#7fd0ff; }
+  .variant video { width:100%; max-height:480px; border-radius:8px; background:#000; }
+  .variant h3 { margin:.6rem 0 .3rem; }
+  .variant p { font-size:.85rem; color:#999; }
+  .badge { font-size:.7rem; background:#7fd0ff; color:#000; border-radius:4px; padding:2px 6px; margin-left:.5rem; }
+  textarea { width:100%; background:#0d0d0f; color:#eee; border:1px solid #333; border-radius:8px; padding:.6rem; min-height:70px; margin:.8rem 0; }
+  ul.jobs { list-style:none; font-size:.85rem; }
+  ul.jobs li { padding:.35rem 0; border-bottom:1px solid #222; cursor:pointer; color:#aaa; }
+  ul.jobs li:hover { color:#fff; }
+</style>
+</head>
+<body>
+  <h1>X L O G</h1>
+  <div class="sub">주 3회 이상 숏폼을 만드는 크리에이터를 위한 도구 — raw video 1~3개 + 요청 한 줄 → 30~60초 숏츠 2편(9:16) → 당신이 고르면, xlog가 당신의 기준을 배웁니다.</div>
+
+  <section>
+    <h2>1. 원본 영상 (파일 또는 YouTube URL, 합쳐서 1~3개)</h2>
+    <div class="row">
+      <input type="file" id="files" accept="video/*" multiple>
+    </div>
+      <input type="text" id="yt-urls" placeholder="YouTube 영상 URL (롱폼도 가능). 여러 개는 줄바꿈 또는 쉼표" style="width:100%;background:#0d0d0f;color:#eee;border:1px solid #333;border-radius:8px;padding:.6rem;margin:.8rem 0">
+    <textarea id="instruction" placeholder="어떤 숏츠를 원하나요? (선택) 예: 이 영상으로 숏츠 만들건데, 재밌는 자막 넣고 눈에 확 들어오는 효과도 넣어줘"></textarea>
+    <div class="row">
+      <button id="start" onclick="startJob()">숏츠 제작 시작</button>
+    </div>
+    <div id="upload-msg" class="error"></div>
+  </section>
+
+  <section id="job-section" style="display:none">
+    <h2>2. 진행 상황 — <span id="job-id"></span></h2>
+    <div class="stage" id="job-stage"></div>
+    <div class="error" id="job-error"></div>
+    <div class="variants" id="variants"></div>
+    <div id="evaluate-box" style="display:none">
+      <h2 style="margin-top:1.5rem">3. 어느 편집이 더 좋습니까? (당신의 선택이 기준이 됩니다)</h2>
+      <textarea id="comment" placeholder="이유를 적어주세요 (선택). 예: A는 훅이 약하지만 후반 몰입이 좋다…"></textarea>
+      <div class="row" id="choice-buttons"></div>
+      <div id="eval-msg" class="stage"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>레퍼런스 학습 — 좋아하는 숏츠의 편집을 xlog에게 가르치기</h2>
+    <div class="row">
+      <input type="url" id="ref-url" placeholder="YouTube Shorts 링크" style="flex:1;background:#0d0d0f;color:#eee;border:1px solid #333;border-radius:8px;padding:.6rem">
+      <button class="ghost" id="ref-btn" onclick="learnReference()">이 스타일 학습</button>
+    </div>
+    <textarea id="ref-notes" placeholder="이 영상의 어떤 점이 좋은가요? (선택) 예: 자막 타이밍이랑 훅 만드는 방식"></textarea>
+    <div id="ref-msg" class="stage"></div>
+    <ul class="jobs" id="ref-list"></ul>
+  </section>
+
+  <section>
+    <h2>지난 작업</h2>
+    <ul class="jobs" id="job-list"></ul>
+  </section>
+
+<script>
+let currentJob = null, pollTimer = null;
+
+const STAGE_LABELS = {
+  queued:"대기 중", ingesting:"영상 다운로드·검증 중", analyzing:"AI가 핵심 장면 분석 중 (시간이 걸립니다)",
+  writing_plans:"편집안 A/B 작성 중", rendering:"렌더링 중", judging:"AI 심사 중",
+  awaiting_evaluation:"당신의 평가를 기다리는 중", done:"완료", failed:"실패",
+};
+
+async function startJob() {
+  const files = document.getElementById("files").files;
+  const urls = document.getElementById("yt-urls").value.trim();
+  const urlCount = urls ? urls.split(/[\s,]+/).filter(Boolean).length : 0;
+  const msg = document.getElementById("upload-msg");
+  msg.textContent = "";
+  const total = files.length + urlCount;
+  if (total < 1 || total > 3) { msg.textContent = "파일과 YouTube URL을 합쳐 1~3개여야 합니다."; return; }
+  const fd = new FormData();
+  for (const f of files) fd.append("files", f);
+  fd.append("youtube_urls", urls);
+  fd.append("instruction", document.getElementById("instruction").value);
+  document.getElementById("start").disabled = true;
+  try {
+    const r = await fetch("/api/jobs", { method:"POST", body:fd });
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const { job_id } = await r.json();
+    watchJob(job_id);
+  } catch (e) { msg.textContent = e.message; }
+  finally { document.getElementById("start").disabled = false; }
+}
+
+function watchJob(id) {
+  currentJob = id;
+  document.getElementById("job-section").style.display = "";
+  document.getElementById("job-id").textContent = id;
+  clearInterval(pollTimer);
+  pollTimer = setInterval(refreshJob, 3000);
+  refreshJob();
+}
+
+async function refreshJob() {
+  const r = await fetch(`/api/jobs/${currentJob}`);
+  if (!r.ok) return;
+  const job = await r.json();
+  document.getElementById("job-stage").textContent = STAGE_LABELS[job.stage] || job.stage;
+  document.getElementById("job-error").textContent = job.error || "";
+  if (["awaiting_evaluation","done","failed"].includes(job.stage)) clearInterval(pollTimer);
+  renderVariants(job);
+  loadJobList();
+}
+
+function renderVariants(job) {
+  const box = document.getElementById("variants");
+  box.innerHTML = "";
+  if (!job.variants || !Object.keys(job.outputs || {}).length) { document.getElementById("evaluate-box").style.display="none"; return; }
+  const jv = job.judge_verdict;
+  const winner = jv ? jv.winner : null;
+  const secondWinner = jv && jv.second_opinion ? jv.second_opinion.winner : null;
+  for (const v of job.variants) {
+    const rec = winner === v.label;
+    let badge = "";
+    if (rec) {
+      if (secondWinner === null) badge = '<span class="badge">AI 추천</span>';
+      else if (jv.models_agree) badge = '<span class="badge">AI 추천 · 2모델 일치</span>';
+      else badge = '<span class="badge" style="background:#ffb27f">Claude 추천</span>';
+    } else if (secondWinner === v.label && !jv.models_agree) {
+      badge = '<span class="badge" style="background:#c9a7ff">GPT 추천</span>';
+    }
+    const el = document.createElement("div");
+    el.className = "variant" + (rec ? " recommended" : "");
+    el.innerHTML = `
+      <video controls src="/api/jobs/${job.id}/video/${v.label}"></video>
+      <h3>편집 ${v.label}${badge}${job.user_choice===v.label ? '<span class="badge" style="background:#9f9">내 선택</span>' : ""}</h3>
+      <p>${v.concept} (${v.total_sec ?? "?"}초)</p>`;
+    box.appendChild(el);
+  }
+  const evalBox = document.getElementById("evaluate-box");
+  if (job.stage === "awaiting_evaluation") {
+    evalBox.style.display = "";
+    const btns = document.getElementById("choice-buttons");
+    btns.innerHTML = "";
+    for (const v of job.variants) {
+      const b = document.createElement("button");
+      b.textContent = `편집 ${v.label} 선택`;
+      b.onclick = () => submitEval(v.label);
+      btns.appendChild(b);
+    }
+  } else evalBox.style.display = "none";
+}
+
+async function submitEval(choice) {
+  const msg = document.getElementById("eval-msg");
+  msg.textContent = "선택 저장 중…";
+  for (const b of document.getElementById("choice-buttons").querySelectorAll("button")) b.disabled = true;
+  const fd = new FormData();
+  fd.append("choice", choice);
+  fd.append("comment", document.getElementById("comment").value);
+  try {
+    const r = await fetch(`/api/jobs/${currentJob}/evaluate`, { method:"POST", body:fd });
+    const data = await r.json();
+    const err = typeof data.detail === "string" ? data.detail
+      : Array.isArray(data.detail) ? data.detail.map(d => d.msg || JSON.stringify(d)).join("; ")
+      : (data.detail ? JSON.stringify(data.detail) : "오류");
+    msg.textContent = r.ok
+      ? `선택 저장됨 (편집 ${choice}). 취향 학습은 백그라운드에서 이어갑니다.`
+      : err;
+  } catch (e) {
+    msg.textContent = e.message;
+  }
+  refreshJob();
+}
+
+async function learnReference() {
+  const url = document.getElementById("ref-url").value.trim();
+  const msg = document.getElementById("ref-msg");
+  if (!url) { msg.textContent = "링크를 입력하세요."; return; }
+  const fd = new FormData();
+  fd.append("url", url);
+  fd.append("notes", document.getElementById("ref-notes").value);
+  const btn = document.getElementById("ref-btn");
+  btn.disabled = true;
+  msg.textContent = "다운로드 및 편집 스타일 분석 중… (1~2분 걸릴 수 있습니다)";
+  try {
+    const r = await fetch("/api/references", { method: "POST", body: fd });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || "오류");
+    msg.textContent = `학습 완료 — "${data.reference.style.style_summary}" → 기준 v${data.rubric_version}에 반영됨`;
+    loadReferences();
+  } catch (e) { msg.textContent = "실패: " + e.message; }
+  finally { btn.disabled = false; }
+}
+
+async function loadReferences() {
+  const r = await fetch("/api/references");
+  if (!r.ok) return;
+  const refs = await r.json();
+  const ul = document.getElementById("ref-list");
+  ul.innerHTML = "";
+  for (const ref of refs.slice(-10).reverse()) {
+    const li = document.createElement("li");
+    li.textContent = `${ref.url} — ${ref.style.style_summary} (기준 v${ref.rubric_version})`;
+    ul.appendChild(li);
+  }
+}
+
+async function loadJobList() {
+  const r = await fetch("/api/jobs");
+  const jobs = await r.json();
+  const ul = document.getElementById("job-list");
+  ul.innerHTML = "";
+  for (const j of jobs.slice(0, 20)) {
+    const li = document.createElement("li");
+    li.textContent = `${j.id} — ${STAGE_LABELS[j.stage] || j.stage}${j.user_choice ? " (선택: "+j.user_choice+")" : ""}`;
+    li.onclick = () => watchJob(j.id);
+    ul.appendChild(li);
+  }
+}
+loadJobList();
+loadReferences();
+</script>
+</body>
+</html>
