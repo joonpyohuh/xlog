@@ -81,7 +81,8 @@ for _d in (UPLOAD_DIR, JOBS_DIR, RUBRIC_DIR, REFERENCE_DIR, TMP_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # yt-dlp binary/module for YouTube source + style-reference download
-YTDLP_BIN = os.environ.get("XLOG_YTDLP", "yt-dlp")
+# Empty = `python -m yt_dlp` (the pip package). Set XLOG_YTDLP to a binary if you have one.
+YTDLP_BIN = os.environ.get("XLOG_YTDLP", "")
 REFERENCE_ANALYSIS_FPS = 1.0   # denser sampling: we're studying the *editing*
 REFERENCE_MAX_SEC = 180        # only learn from short-form references
 SOURCE_MAX_SEC = 30 * 60       # long-form YouTube source cap

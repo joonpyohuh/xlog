@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -38,19 +39,31 @@ def parse_youtube_urls(text: str) -> list[str]:
     return out
 
 
+def _ytdlp_argv() -> list[str]:
+    """Run yt-dlp via the pip module unless a real binary path is configured."""
+    bin_ = (config.YTDLP_BIN or "").strip()
+    if bin_ and (Path(bin_).exists() or Path(bin_).suffix or "/" in bin_ or "\\" in bin_):
+        return [bin_]
+    return [sys.executable, "-m", "yt_dlp"]
+
+
 def download_youtube(url: str, dest_dir: Path, stem: str | None = None) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
     stem = stem or f"yt_{uuid.uuid4().hex[:8]}"
     out_tpl = dest_dir / f"{stem}.%(ext)s"
-    cmd = [
-        config.YTDLP_BIN,
+    cmd = _ytdlp_argv() + [
         "-f", "bv*[height<=1080]+ba/b[height<=1080]/b",
         "--merge-output-format", "mp4",
         "--no-playlist",
         "-o", str(out_tpl),
         url,
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError as e:
+        raise IngestError(
+            "yt-dlp is not installed. pip install -r requirements.txt"
+        ) from e
     if proc.returncode != 0:
         raise IngestError(f"yt-dlp failed: {(proc.stderr or '')[-400:]}")
     matches = list(dest_dir.glob(f"{stem}.*"))
