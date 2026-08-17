@@ -18,6 +18,17 @@
   button.ghost { background:transparent; color:#ccc; border:1px solid #444; }
   .row { display:flex; gap:1rem; align-items:center; flex-wrap:wrap; }
   .stage { font-size:.85rem; color:#7fd0ff; }
+  .progress { margin:1rem 0 .4rem; }
+  .progress .track { height:10px; background:#222; border-radius:99px; overflow:hidden; }
+  .progress .fill { height:100%; width:0%; background:#7fd0ff; border-radius:99px; transition:width .25s; }
+  .progress .meta { display:flex; justify-content:space-between; gap:1rem; font-size:.85rem; color:#ccc; margin:.55rem 0 .2rem; }
+  .progress .detail { font-size:.8rem; color:#888; min-height:1.2em; }
+  .psteps { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.85rem; }
+  .psteps span { font-size:.72rem; color:#555; padding:.25rem .65rem; border:1px solid #2a2a30; border-radius:99px; }
+  .psteps span.on { color:#7fd0ff; border-color:#7fd0ff; }
+  .psteps span.done { color:#8fe08f; border-color:#2a4a2a; }
+  .psteps span.fail { color:#ff7f7f; border-color:#ff7f7f; }
+  .hint { font-size:.8rem; color:#888; margin:.45rem 0 0; }
   .error { color:#ff7f7f; font-size:.85rem; white-space:pre-wrap; }
   .variants { display:flex; gap:1.5rem; flex-wrap:wrap; }
   .variant { flex:1; min-width:320px; background:#101013; border:1px solid #2a2a30; border-radius:10px; padding:1rem; }
@@ -27,22 +38,74 @@
   .variant p { font-size:.85rem; color:#999; }
   .badge { font-size:.7rem; background:#7fd0ff; color:#000; border-radius:4px; padding:2px 6px; margin-left:.5rem; }
   textarea { width:100%; background:#0d0d0f; color:#eee; border:1px solid #333; border-radius:8px; padding:.6rem; min-height:70px; margin:.8rem 0; }
+  input[type=text], select { width:100%; background:#0d0d0f; color:#eee; border:1px solid #333; border-radius:8px; padding:.6rem; }
+  label.field { display:block; font-size:.78rem; color:#888; margin:0.9rem 0 0.35rem; }
+  .chips { display:flex; flex-wrap:wrap; gap:.4rem; margin:.2rem 0 .6rem; }
+  .chip { background:#1c1c22; color:#ccc; border:1px solid #333; border-radius:999px; padding:.35rem .85rem; font-size:.8rem; cursor:pointer; }
+  .chip.on { background:#fff; color:#000; border-color:#fff; font-weight:600; }
   ul.jobs { list-style:none; font-size:.85rem; }
   ul.jobs li { padding:.35rem 0; border-bottom:1px solid #222; cursor:pointer; color:#aaa; }
   ul.jobs li:hover { color:#fff; }
+  .card { min-width:150px; }
+  .card b { display:block; font-size:1.4rem; font-weight:600; }
+  .card span { font-size:.75rem; color:#888; letter-spacing:.05em; }
+  .bar { display:flex; gap:2px; height:8px; margin:1rem 0 .6rem; }
+  .bar u { display:block; height:100%; background:#7fd0ff; border-radius:2px; transition:width .4s; }
+  .learn-rules { font-size:.82rem; color:#999; margin-top:.8rem; }
+  .learn-rules div { padding:.25rem 0; border-bottom:1px solid #1e1e22; }
+  .pref { display:flex; gap:.5rem; }
+  .pref b { color:#8fe08f; font-weight:600; }
+  .pref s { color:#e08f8f; opacity:.7; }
 </style>
 </head>
 <body>
   <h1>X L O G</h1>
-  <div class="sub">주 3회 이상 숏폼을 만드는 크리에이터를 위한 도구 — raw video 1~3개 + 요청 한 줄 → 30~60초 숏츠 2편(9:16) → 당신이 고르면, xlog가 당신의 기준을 배웁니다.</div>
+  <div class="sub">주 3회 이상 숏폼을 만드는 크리에이터를 위한 도구 — 채널이 쇼츠를 뽑는 이유와 같은 장면을 잘라야 의미가 있습니다. 브리프를 채우고 A/B 중 고르면, xlog가 그 기준을 배웁니다.</div>
 
   <section>
     <h2>1. 원본 영상 (파일 또는 YouTube URL, 합쳐서 1~3개)</h2>
     <div class="row">
       <input type="file" id="files" accept="video/*" multiple>
     </div>
+    <div class="hint" id="file-hint">로컬 원본은 용량이 크면 업로드부터 시간이 걸립니다. 아래에서 진행률이 보입니다.</div>
+    <label class="field" style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+      <input type="checkbox" id="source-edited" style="width:auto;margin:0">
+      원본이 이미 편집된 롱폼입니다 (자막이 화면에 박혀 있음)
+    </label>
+    <div class="hint">켜면 아래쪽 자막 띠를 잘라내고 화면을 다시 잡습니다. 옛 자막이 쇼츠에 겹쳐 나오지 않고, AI도 박힌 글자 대신 장면만 읽습니다.</div>
       <input type="text" id="yt-urls" placeholder="YouTube 영상 URL (롱폼도 가능). 여러 개는 줄바꿈 또는 쉼표" style="width:100%;background:#0d0d0f;color:#eee;border:1px solid #333;border-radius:8px;padding:.6rem;margin:.8rem 0">
-    <textarea id="instruction" placeholder="어떤 숏츠를 원하나요? (선택) 예: 이 영상으로 숏츠 만들건데, 재밌는 자막 넣고 눈에 확 들어오는 효과도 넣어줘"></textarea>
+
+    <label class="field">채널 — 이 쇼츠를 왜 올리는 채널인가요?</label>
+    <div class="chips" id="channel-chips"></div>
+
+    <label class="field">왜 이 쇼츠를 뽑나요? (필수) 예: 오늘 첫 걸음 / 이번 판 클러치 3킬</label>
+    <input type="text" id="brief-why" placeholder="시청자가 이 쇼츠를 눌러야 하는 한 줄">
+
+    <label class="field">어떤 장면을 넣나요?</label>
+    <textarea id="brief-hunt" style="min-height:52px" placeholder="채널을 고르면 기본값이 채워집니다. 이 영상에서 꼭 넣을 장면을 고치세요."></textarea>
+
+    <label class="field">그 장면을 어떻게 강조하나요?</label>
+    <textarea id="brief-emphasize" style="min-height:52px" placeholder="줌, 플래시, 자막 톤…"></textarea>
+
+    <label class="field">넣지 말 것</label>
+    <input type="text" id="brief-skip" placeholder="로딩, 이동, 설명, 반복 풍경…">
+
+    <label class="field">메인으로 가져갈 부분 — 여기 적은 장면이 훅 또는 페이오프가 됩니다</label>
+    <textarea id="brief-must" style="min-height:52px" placeholder="예: 12:30~14:00 케이크 자르는 부분을 메인으로 / 강아지가 계단에서 넘어지는 장면을 강조"></textarea>
+    <div class="hint">시간(12:30, 3분 20초)을 적으면 그 구간을 정밀 재분석해서 무조건 넣습니다. 장면을 말로 적으면 설명이 일치하는 컷을 찾아 메인으로 올립니다.</div>
+
+    <label class="field">품질</label>
+    <div class="chips" id="quality-chips"></div>
+    <div class="hint" id="quality-hint">기본은 빠르고 저렴합니다. 프로는 분석 고화질 + Claude 편집안(키 있을 때) + 조금 더 깨끗한 인코딩입니다. 나중에 구독으로 잠깁니다.</div>
+
+    <label class="field">TTS 목소리 — 없음을 고르면 원본 소리만 씁니다. 목소리를 고르면 장면마다 속도·피치가 바뀝니다</label>
+    <div class="chips" id="voice-chips"></div>
+
+    <label class="field">자막 글꼴</label>
+    <div class="chips" id="font-chips"></div>
+
+    <label class="field">기타 요청 (선택)</label>
+    <textarea id="instruction" placeholder="예: 자막은 반말, 훅은 결과부터"></textarea>
     <div class="row">
       <button id="start" onclick="startJob()">숏츠 제작 시작</button>
     </div>
@@ -51,7 +114,15 @@
 
   <section id="job-section" style="display:none">
     <h2>2. 진행 상황 — <span id="job-id"></span></h2>
-    <div class="stage" id="job-stage"></div>
+    <div class="progress">
+      <div class="meta">
+        <span id="job-stage" class="stage"></span>
+        <span id="job-pct">0%</span>
+      </div>
+      <div class="track"><div class="fill" id="job-fill"></div></div>
+      <div class="detail" id="job-detail"></div>
+      <div class="psteps" id="job-steps"></div>
+    </div>
     <div class="error" id="job-error"></div>
     <div class="variants" id="variants"></div>
     <div id="evaluate-box" style="display:none">
@@ -74,18 +145,86 @@
   </section>
 
   <section>
+    <h2>학습 상태 — 내 선택이 xlog를 어떻게 바꾸고 있나</h2>
+    <div class="row" style="gap:2rem" id="learn-cards"></div>
+    <div class="bar" id="learn-bar"></div>
+    <div class="stage" id="learn-progress"></div>
+    <div id="learn-rules" class="learn-rules"></div>
+    <div id="learn-samples" class="learn-rules"></div>
+  </section>
+
+  <section>
     <h2>지난 작업</h2>
     <ul class="jobs" id="job-list"></ul>
   </section>
 
 <script>
-let currentJob = null, pollTimer = null;
+let currentJob = null, pollTimer = null, briefPresets = [], selectedChannel = "";
+let selectedVoice = "auto", selectedFont = "malgun", selectedQuality = "fast";
+let uploadStartedAt = 0;
+
+const PIPELINE = [
+  {id:"uploading", label:"파일 업로드"},
+  {id:"ingesting", label:"원본 검증"},
+  {id:"analyzing", label:"장면 분석"},
+  {id:"writing_plans", label:"편집안"},
+  {id:"rendering", label:"렌더링"},
+  {id:"judging", label:"AI 심사"},
+  {id:"awaiting_evaluation", label:"평가"},
+];
 
 const STAGE_LABELS = {
-  queued:"대기 중", ingesting:"영상 다운로드·검증 중", analyzing:"AI가 핵심 장면 분석 중 (시간이 걸립니다)",
-  writing_plans:"편집안 A/B 작성 중", rendering:"렌더링 중", judging:"AI 심사 중",
-  awaiting_evaluation:"당신의 평가를 기다리는 중", done:"완료", failed:"실패",
+  uploading:"파일 업로드 중", queued:"대기 중", ingesting:"원본 검증 중",
+  analyzing:"장면 분석 중", writing_plans:"편집안 A/B 작성 중", rendering:"렌더링 중",
+  judging:"AI 심사 중", awaiting_evaluation:"평가 대기", done:"완료", failed:"실패",
 };
+
+function fmtBytes(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + "GB";
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + "MB";
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + "KB";
+  return n + "B";
+}
+function fmtElapsed(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return m ? `${m}분 ${s}초` : `${s}초`;
+}
+function showJobPanel(id) {
+  document.getElementById("job-section").style.display = "";
+  document.getElementById("job-id").textContent = id || "업로드 중";
+}
+function renderProgress(stage, pct, detail, startedAt) {
+  const p = Math.max(0, Math.min(100, Math.round(pct || 0)));
+  document.getElementById("job-fill").style.width = p + "%";
+  document.getElementById("job-pct").textContent = p + "%";
+  const elapsed = startedAt ? " · 경과 " + fmtElapsed((Date.now() / 1000) - startedAt) : "";
+  document.getElementById("job-stage").textContent = (STAGE_LABELS[stage] || stage) + elapsed;
+  document.getElementById("job-detail").textContent = detail || "";
+  const order = PIPELINE.map(s => s.id);
+  const cur = stage === "done" ? order.length : order.indexOf(stage);
+  document.getElementById("job-steps").innerHTML = PIPELINE.map((s, i) => {
+    let cls = "";
+    if (stage === "failed" && i === Math.max(cur, 0)) cls = "fail";
+    else if (stage === "done" || (cur >= 0 && i < cur)) cls = "done";
+    else if (i === cur) cls = "on";
+    return `<span class="${cls}">${i + 1}. ${s.label}</span>`;
+  }).join("");
+}
+
+function describeFiles(fileList) {
+  const files = [...fileList];
+  if (!files.length) return "";
+  const lines = files.map(f => `${f.name} (${fmtBytes(f.size)})`);
+  const big = files.some(f => f.size > 400e6);
+  return lines.join(" · ") + (big ? " — 대용량이라 업로드 진행률이 먼저 표시됩니다." : "");
+}
+
+document.getElementById("files").addEventListener("change", () => {
+  document.getElementById("file-hint").textContent =
+    describeFiles(document.getElementById("files").files)
+    || "로컬 원본은 용량이 크면 업로드부터 시간이 걸립니다. 아래에서 진행률이 보입니다.";
+});
 
 async function startJob() {
   const files = document.getElementById("files").files;
@@ -95,26 +234,84 @@ async function startJob() {
   msg.textContent = "";
   const total = files.length + urlCount;
   if (total < 1 || total > 3) { msg.textContent = "파일과 YouTube URL을 합쳐 1~3개여야 합니다."; return; }
+  const why = document.getElementById("brief-why").value.trim();
+  if (!why) { msg.textContent = "이 쇼츠를 왜 뽑는지 한 줄은 필수입니다. 그 한 줄이 컷의 기준입니다."; return; }
   const fd = new FormData();
   for (const f of files) fd.append("files", f);
   fd.append("youtube_urls", urls);
-  fd.append("instruction", document.getElementById("instruction").value);
+  fd.append("font", selectedFont);
+  fd.append("voice", selectedVoice);
+  fd.append("quality", selectedQuality);
+  fd.append("source_edited", document.getElementById("source-edited").checked ? "1" : "");
+  fd.append("brief", JSON.stringify({
+    channel: selectedChannel,
+    why,
+    hunt: document.getElementById("brief-hunt").value.trim(),
+    emphasize: document.getElementById("brief-emphasize").value.trim(),
+    skip: document.getElementById("brief-skip").value.trim(),
+    must: document.getElementById("brief-must").value.trim(),
+    notes: document.getElementById("instruction").value.trim(),
+  }));
   document.getElementById("start").disabled = true;
+  uploadStartedAt = Date.now() / 1000;
+  showJobPanel("업로드 중");
+  document.getElementById("job-error").textContent = "";
+  document.getElementById("evaluate-box").style.display = "none";
+  document.getElementById("variants").innerHTML = "";
+  const hasLocal = files.length > 0;
+  renderProgress(
+    hasLocal ? "uploading" : "queued",
+    hasLocal ? 0 : 5,
+    hasLocal ? describeFiles(files) : "작업 생성 중",
+    uploadStartedAt,
+  );
+
   try {
-    const r = await fetch("/api/jobs", { method:"POST", body:fd });
-    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
-    const { job_id } = await r.json();
+    const { job_id } = await postJob(fd, hasLocal);
     watchJob(job_id);
   } catch (e) { msg.textContent = e.message; }
   finally { document.getElementById("start").disabled = false; }
 }
 
+function postJob(fd, trackUpload) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/jobs");
+    if (trackUpload) {
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        const pct = Math.round(90 * e.loaded / e.total);
+        renderProgress(
+          "uploading", pct,
+          `${fmtBytes(e.loaded)} / ${fmtBytes(e.total)} 전송 중`,
+          uploadStartedAt,
+        );
+      };
+      xhr.upload.onload = () => {
+        renderProgress("uploading", 95, "서버가 파일을 저장·검사하는 중", uploadStartedAt);
+      };
+    }
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText || "{}"); } catch {}
+      if (xhr.status >= 200 && xhr.status < 300 && data.job_id) resolve(data);
+      else {
+        const err = typeof data.detail === "string" ? data.detail
+          : Array.isArray(data.detail) ? data.detail.map(d => d.msg || JSON.stringify(d)).join("; ")
+          : (xhr.statusText || "업로드 실패");
+        reject(new Error(err));
+      }
+    };
+    xhr.onerror = () => reject(new Error("네트워크 오류 — 업로드가 끊겼습니다"));
+    xhr.send(fd);
+  });
+}
+
 function watchJob(id) {
   currentJob = id;
-  document.getElementById("job-section").style.display = "";
-  document.getElementById("job-id").textContent = id;
+  showJobPanel(id);
   clearInterval(pollTimer);
-  pollTimer = setInterval(refreshJob, 3000);
+  pollTimer = setInterval(refreshJob, 1000);
   refreshJob();
 }
 
@@ -122,7 +319,17 @@ async function refreshJob() {
   const r = await fetch(`/api/jobs/${currentJob}`);
   if (!r.ok) return;
   const job = await r.json();
-  document.getElementById("job-stage").textContent = STAGE_LABELS[job.stage] || job.stage;
+  const p = job.progress || {};
+  const fallback = {
+    queued:0, ingesting:8, analyzing:18, writing_plans:60,
+    rendering:70, judging:88, awaiting_evaluation:100, done:100, failed:0,
+  };
+  renderProgress(
+    job.stage,
+    p.pct ?? fallback[job.stage] ?? 0,
+    p.detail || (job.brief && job.brief.why ? job.brief.why : ""),
+    p.started_at || job.created_at,
+  );
   document.getElementById("job-error").textContent = job.error || "";
   if (["awaiting_evaluation","done","failed"].includes(job.stage)) clearInterval(pollTimer);
   renderVariants(job);
@@ -142,7 +349,7 @@ function renderVariants(job) {
     if (rec) {
       if (secondWinner === null) badge = '<span class="badge">AI 추천</span>';
       else if (jv.models_agree) badge = '<span class="badge">AI 추천 · 2모델 일치</span>';
-      else badge = '<span class="badge" style="background:#ffb27f">Claude 추천</span>';
+      else badge = '<span class="badge" style="background:#ffb27f">Grok 추천</span>';
     } else if (secondWinner === v.label && !jv.models_agree) {
       badge = '<span class="badge" style="background:#c9a7ff">GPT 추천</span>';
     }
@@ -188,6 +395,7 @@ async function submitEval(choice) {
     msg.textContent = e.message;
   }
   refreshJob();
+  loadLearning();
 }
 
 async function learnReference() {
@@ -230,13 +438,129 @@ async function loadJobList() {
   ul.innerHTML = "";
   for (const j of jobs.slice(0, 20)) {
     const li = document.createElement("li");
-    li.textContent = `${j.id} — ${STAGE_LABELS[j.stage] || j.stage}${j.user_choice ? " (선택: "+j.user_choice+")" : ""}`;
+    li.textContent = `${j.id} — ${STAGE_LABELS[j.stage] || j.stage}`
+      + (j.progress && j.progress.pct != null && !["done","failed","awaiting_evaluation"].includes(j.stage)
+        ? ` ${j.progress.pct}%` : "")
+      + (j.user_choice ? " (선택: "+j.user_choice+")" : "");
     li.onclick = () => watchJob(j.id);
     ul.appendChild(li);
   }
 }
+async function loadLearning() {
+  const r = await fetch("/api/learning");
+  if (!r.ok) return;
+  const d = await r.json();
+  const cards = [
+    ["내 A/B 선택", `${d.picks}`],
+    ["AI 심사와 일치", `${d.picks ? Math.round(100 * d.agreed / d.picks) : 0}%`],
+    ["레퍼런스", `${d.references}`],
+    ["기준 버전", `v${d.rubric_version}`],
+    ["학습된 규칙", `${d.rules_in_prompt.length}/${d.rules_total}`],
+  ];
+  document.getElementById("learn-cards").innerHTML = cards
+    .map(([k, v]) => `<div class="card"><b>${v}</b><span>${k}</span></div>`).join("");
+
+  const bar = document.getElementById("learn-bar");
+  bar.innerHTML = d.criteria.map(c =>
+    `<u title="${escapeHtml(c.name)} ${c.weight} (seed 대비 ${c.delta >= 0 ? "+" : ""}${c.delta})"
+        style="width:${c.weight}%;opacity:${c.delta === 0 ? .45 : 1}"></u>`).join("");
+  document.getElementById("learn-progress").textContent =
+    `${d.vision_model || d.model} 이 원본을 읽고 ${d.model} 이 서사를 짭니다. `
+    + `심사는 ${d.judge_model || d.model}. `
+    + `검증만 ${d.fast_model || d.verify_model}`
+    + (d.gpt_live ? ` + ${d.verify_model}` : " (OpenAI 없음 — Grok으로 검증)")
+    + `. 선택할 때마다 기준표를 다시 쓰고(현재 v${d.rubric_version}), `
+    + `가장 자주 재확인된 규칙 ${d.rules_in_prompt.length}개가 프롬프트에 실제로 들어갑니다.`
+    + (d.rubric_notes ? ` 최근 변경: ${d.rubric_notes.slice(0, 220)}` : "");
+
+  document.getElementById("learn-rules").innerHTML =
+    `<div style="color:#7fd0ff">프롬프트에 지금 들어가는 규칙</div>`
+    + d.rules_in_prompt.map(x => `<div>· ${escapeHtml(x)}</div>`).join("");
+  document.getElementById("learn-samples").innerHTML = d.recent.map(s =>
+    `<div class="pref"><b>선택 ${escapeHtml(s.choice)} ✓</b><span>${escapeHtml(s.chosen)}</span></div>
+     <div class="pref"><s>미선택 ✗</s><span>${escapeHtml(s.rejected)}</span></div>
+     <div style="color:#666">${s.agreement ? "AI 심사와 일치" : "AI 심사와 불일치 — 가장 강한 학습 신호"}`
+    + `${s.comment ? " · 코멘트: " + escapeHtml(s.comment) : ""} → 기준 v${s.rubric_version}</div>`).join("");
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+}
+
+function pickChannel(id) {
+  selectedChannel = id;
+  for (const b of document.querySelectorAll("#channel-chips .chip")) {
+    b.classList.toggle("on", b.dataset.id === id);
+  }
+  const p = briefPresets.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById("brief-hunt").value = p.hunt;
+  document.getElementById("brief-emphasize").value = p.emphasize;
+  document.getElementById("brief-skip").value = p.skip;
+}
+
+async function loadBriefPresets() {
+  const r = await fetch("/api/brief");
+  if (!r.ok) return;
+  briefPresets = await r.json();
+  const box = document.getElementById("channel-chips");
+  box.innerHTML = "";
+  for (const p of briefPresets) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.dataset.id = p.id;
+    b.textContent = p.label;
+    b.onclick = () => pickChannel(p.id);
+    box.appendChild(b);
+  }
+}
+
+function fillChips(boxId, items, selected, onPick) {
+  const box = document.getElementById(boxId);
+  box.innerHTML = "";
+  for (const p of items) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip" + (p.id === selected ? " on" : "");
+    b.dataset.id = p.id;
+    b.textContent = p.label;
+    b.onclick = () => {
+      onPick(p.id);
+      for (const x of box.querySelectorAll(".chip")) x.classList.toggle("on", x.dataset.id === p.id);
+    };
+    box.appendChild(b);
+  }
+}
+
+async function loadStylePresets() {
+  const r = await fetch("/api/style");
+  if (!r.ok) return;
+  const d = await r.json();
+  const fonts = d.fonts || [];
+  const voices = d.voices || [];
+  if (fonts.length && !fonts.some(f => f.id === selectedFont)) selectedFont = fonts[0].id;
+  fillChips("font-chips", fonts, selectedFont, id => { selectedFont = id; });
+  fillChips("voice-chips", voices, selectedVoice, id => { selectedVoice = id; });
+  const qualities = d.qualities || [];
+  const unlocked = d.unlocked !== false;
+  const shown = qualities.filter(q => !q.pro || unlocked);
+  if (shown.length && !shown.some(q => q.id === selectedQuality)) selectedQuality = shown[0].id;
+  const hint = document.getElementById("quality-hint");
+  const applyHint = () => {
+    const q = shown.find(x => x.id === selectedQuality);
+    if (q && q.hint) hint.textContent = q.hint + (q.pro && !d.claude ? " Claude 키가 없으면 편집안은 Grok으로 갑니다." : "");
+  };
+  fillChips("quality-chips", shown, selectedQuality, id => { selectedQuality = id; applyHint(); });
+  applyHint();
+}
+
+loadBriefPresets();
+loadStylePresets();
 loadJobList();
 loadReferences();
+loadLearning();
+setInterval(loadLearning, 15000);
 </script>
 </body>
 </html>

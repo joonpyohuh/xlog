@@ -18,7 +18,7 @@ from pathlib import Path
 
 from app import config
 from app.evaluation import rubric as rubric_store
-from app.llm import claude
+from app.llm import gemini
 from app.pipeline import ingest, preprocess
 from app.storage import cleanup
 from app.storage import memory as memory_store
@@ -82,24 +82,30 @@ def learn_from_youtube(url: str, notes: str = "") -> dict:
                 f"references (<= {config.REFERENCE_MAX_SEC}s) are supported"
             )
 
-        frames_dir = config.TMP_DIR / f"ref_frames_{video.stem}"
-        frames = preprocess.extract_frames(
-            video, frames_dir, fps=config.REFERENCE_ANALYSIS_FPS,
+        prompt = (
+            f"Reference video ({info['duration_sec']:.0f}s). "
+            + (f"Creator's note on why they like it: {notes}\n" if notes else "")
+            + "Watch the whole file and analyze the editing style."
         )
-        # cap frames to one request
-        step = max(1, len(frames) // config.MAX_FRAMES_PER_REQUEST)
-        sampled = frames[::step][: config.MAX_FRAMES_PER_REQUEST]
-        style = claude.analyze_frames(
-            system=_STYLE_SYSTEM,
-            prompt=(
-                f"Reference video ({info['duration_sec']:.0f}s). "
-                + (f"Creator's note on why they like it: {notes}\n" if notes else "")
-                + "Analyze the editing style."
-            ),
-            frames_b64=[preprocess.frame_to_b64(f["path"]) for f in sampled],
-            timestamps=[f["t"] for f in sampled],
-            schema=_STYLE_SCHEMA,
-        )
+        try:
+            style = gemini.analyze_video(
+                video, system=_STYLE_SYSTEM, prompt=prompt, schema=_STYLE_SCHEMA,
+            )
+            frames_dir = None
+        except Exception:
+            frames_dir = config.TMP_DIR / f"ref_frames_{video.stem}"
+            frames = preprocess.extract_frames(
+                video, frames_dir, fps=config.REFERENCE_ANALYSIS_FPS,
+            )
+            step = max(1, len(frames) // config.MAX_FRAMES_PER_REQUEST)
+            sampled = frames[::step][: config.MAX_FRAMES_PER_REQUEST]
+            style = gemini.analyze_frames(
+                system=_STYLE_SYSTEM,
+                prompt=prompt,
+                frames_b64=[preprocess.frame_to_b64(f["path"]) for f in sampled],
+                timestamps=[f["t"] for f in sampled],
+                schema=_STYLE_SCHEMA,
+            )
 
         new_rubric = _merge_into_rubric(url, notes, style)
 
@@ -128,7 +134,7 @@ def learn_from_youtube(url: str, notes: str = "") -> dict:
 
 def _merge_into_rubric(url: str, notes: str, style: dict) -> dict:
     current = rubric_store.load_rubric()
-    new_rubric = claude.complete_json(
+    new_rubric = gemini.complete_json(
         system=(
             "You maintain the editing rubric for xlog, the pilot creator's "
             "personal shorts tool. The creator provided a reference video "

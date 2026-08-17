@@ -166,12 +166,22 @@ def _create_tables(conn: sqlite3.Connection) -> None:
     )
 
 
+def _loads(raw, default):
+    if raw is None:
+        return default
+    if isinstance(raw, (list, dict)):
+        return raw
+    if isinstance(raw, str) and not raw.strip():
+        return default
+    return json.loads(raw)
+
+
 def _row_to_rubric(row: sqlite3.Row) -> dict:
     return {
         "version": row["version"],
         "owner": row["owner"],
-        "criteria": json.loads(row["criteria"]),
-        "preferences": json.loads(row["preferences"]),
+        "criteria": _loads(row["criteria"], []),
+        "preferences": _loads(row["preferences"], []),
         "notes": row["notes"],
     }
 
@@ -198,7 +208,7 @@ def save_rubric(rubric: dict, source: str = "unknown") -> None:
             "SELECT preferences FROM rubric_versions "
             "ORDER BY version DESC, id DESC LIMIT 1"
         ).fetchone()
-        old_prefs = set(json.loads(prev["preferences"])) if prev else set()
+        old_prefs = set(_loads(prev["preferences"], [])) if prev else set()
         new_prefs = list(rubric.get("preferences") or [])
         added = [p for p in new_prefs if p not in old_prefs]
         # snapshot before insert-or-ignore, otherwise every new rule looks "known"
@@ -352,8 +362,8 @@ def load_form() -> dict | None:
     return {
         "version": row["version"],
         "source": row["source"],
-        "structure": json.loads(row["structure"]),
-        "global_rules": json.loads(row["global_rules"]),
+        "structure": _loads(row["structure"], []),
+        "global_rules": _loads(row["global_rules"], []),
     }
 
 
@@ -438,7 +448,7 @@ def list_ft_examples() -> list[dict]:
             "kind": r["kind"],
             "source": r["source"],
             "source_id": r["source_id"],
-            "messages": json.loads(r["messages"]),
+            "messages": _loads(r["messages"], []),
         }
         for r in rows
     ]
@@ -521,6 +531,16 @@ def list_preferences() -> list[dict]:
             "ORDER BY times_seen DESC, last_seen_at DESC, id ASC"
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def reinforce_preferences(rules: list[str]) -> None:
+    """A later comment restated these rules — bump times_seen only."""
+    init()
+    if _use_cloud():
+        return supabase_store.reinforce_preferences(rules)
+    with _lock, _connect() as conn:
+        _sync_preferences(conn, rules, "feedback", "restate", bump=True)
+        conn.commit()
 
 
 def stats() -> dict:
@@ -618,7 +638,7 @@ def _migrate_from_files(conn: sqlite3.Connection) -> None:
     if latest:
         _sync_preferences(
             conn,
-            json.loads(latest["preferences"]),
+            _loads(latest["preferences"], []),
             "migrated",
             f"rubric_v{latest['version']}",
             bump=False,

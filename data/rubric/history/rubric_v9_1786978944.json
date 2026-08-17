@@ -1,5 +1,5 @@
 {
-  "version": 10,
+  "version": 9,
   "owner": "xlog baseline — mainstream shorts conventions + pilot creator references (LoL gameplay commentary, live-action narrative, movie-clip recut, family vlog comedy)",
   "criteria": [
     {
@@ -68,10 +68,9 @@
     "Keep a driving, constant-pulse music bed under montage sections so the cuts land on the beat.",
     "Runtime up to ~60s is fine when every shot earns a laugh or adds information — '핵심만' means removing dead weight, not hitting a shorter duration.",
     "Avoid emojis and on-screen title cards.",
-    "When captions carry the comedy narrative, the footage must keep pace with visual variety — do not loop the same two clips over and over; the edit needs enough different shots to support the caption story without the footage itself becomes repetitive.",
+    "When captions carry the comedy narrative, the footage must keep pace with visual variety — do not loop the same two clips over and over; the edit needs enough different shots to support the caption story without the footage itself becoming repetitive.",
     "When both edits are technically competent and the judge's scores are close, trust the edit that opens on the highest-emotion / highest-action frame and states the situation clearly in the first line — clarity of premise in the hook often matters more than tighter mid-roll pacing.",
-    "When evaluating hook setups in vlog comedy, prioritize immediate asymmetric contrast (such as bike versus walking) presented right in the opening frames over chronological setup, ensuring the core comedic premise is legible immediately.",
-    "Prioritize coherent narrative flow and logical scene transitions over hyper-optimized isolated shot pacing; connecting dialogue, setup, and climax into a single unified thread outweighs raw structural polish."
+    "When evaluating hook setups in vlog comedy, prioritize immediate asymmetric contrast (such as bike versus walking) presented right in the opening frames over chronological setup, ensuring the core comedic premise is legible immediately."
   ],
-  "notes": "v10 — creator selected Edit A over AI judge recommendation (B) despite the judge citing structural and pacing advantages in B. The creator valued A's superior narrative flow and cohesive scene linkage, prioritizing a unified storytelling arc over individual cut optimization. Added preference supporting cohesive scene connectivity and clear narrative thread continuity over isolated structural tweaks."
+  "notes": "v9 — creator selected Edit A over AI judge recommendation (B). Judge favored B for structural smoothness and chronological arc, whereas A immediately established the core comedic premise (the bike vs walking asymmetry) right in the hook ('한 놈은 타고' / '한 놈은 걷는다'). The creator's preference highlights that visual and thematic immediacy of the central gag in the opening beats outweighs chronological buildup. Added a preference capturing this priority for direct premise-first contrasting hooks."
 }

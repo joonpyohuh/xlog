@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from pathlib import Path
 
 from app import config
@@ -56,9 +57,15 @@ def drop_paths(paths: list[str] | None) -> None:
         _rm(Path(raw))
 
 
+def _finished_at(job: dict) -> int:
+    return int(
+        (job.get("progress") or {}).get("updated_at") or job.get("created_at") or 0
+    )
+
+
 def slim_finished_job(job: dict, *, keep_shorts: bool = False) -> None:
-    """Drop source footage. Keep rendered shorts until the next job starts
-    (`reclaim` wipes finished jobs fully) so A/B pick still shows on screen."""
+    """Drop source footage. Rendered shorts survive until they age out of
+    SHORTS_RETENTION_SEC — the source files are what actually fill the disk."""
     drop_paths(job.get("videos"))
     work = job_store.job_dir(job["id"])
     if keep_shorts:
@@ -86,9 +93,12 @@ def reclaim() -> None:
     empty_dir(config.TMP_DIR)
     empty_dir(config.REFERENCE_DIR)
     live_sources: set[str] = set()
+    now = time.time()
     for job in job_store.list_jobs():
         if job.get("stage") in ("done", "failed"):
-            slim_finished_job(job)
+            # a job the creator may still be watching must keep its A/B files
+            fresh = now - _finished_at(job) < config.SHORTS_RETENTION_SEC
+            slim_finished_job(job, keep_shorts=fresh)
         else:
             live_sources.update(job.get("videos") or [])
     if config.UPLOAD_DIR.exists():

@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 from app import config
-from app.llm import claude
+from app.llm import gemini
 from app.storage import memory as memory_store
 
 FORM_PATH: Path = config.RUBRIC_DIR / "shorts_form.json"
@@ -80,7 +80,9 @@ def save_form(form: dict) -> None:
 def form_as_prompt() -> str:
     """Render the form document for injection into screenwriter prompts."""
     form = load_form()
-    lines = ["## Short-form video structure (learned from IG Reels / YT Shorts)"]
+    lines = [
+        "## Shot timing rails only — do not use this to make captions polite or generic"
+    ]
     for sec in form["structure"]:
         lo, hi = sec["window_sec"]
         lines.append(f"- {sec['name']} ({lo}-{hi}s): {sec['rule']}")
@@ -118,7 +120,7 @@ def refresh_form(notes: str = "") -> dict:
     """Ask Claude to regenerate the form document from its knowledge of
     current IG Reels / YT Shorts conventions, optionally guided by `notes`."""
     current = load_form()
-    result = claude.complete_json(
+    result = gemini.complete_json(
         system=(
             "You are a short-form video editor who deeply understands the "
             "current grammar of Instagram Reels and YouTube Shorts: hooks, "
@@ -133,6 +135,7 @@ def refresh_form(notes: str = "") -> dict:
             "to a one-line description of this revision."
         ),
         schema=_FORM_SCHEMA,
+        model=config.GEMINI_MODEL,
     )
     save_form(result)
     return result

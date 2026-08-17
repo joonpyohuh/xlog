@@ -18,3 +18,5 @@ venv/
 
 # vercel local link
 .vercel/
+
+.vercel

@@ -1,14 +1,16 @@
 """Runnable check: python -m app.storage.memory_check
 
-Fails if learning does not persist, DPO pairs cannot be built,
-YouTube URLs do not parse, or disk cleanup leaves media behind.
+Fails if learning does not persist, learned taste does not reach the
+prompts, YouTube URLs do not parse, or disk cleanup leaves media behind.
 """
 from __future__ import annotations
 
+import shutil
 import tempfile
 from pathlib import Path
 
-from app.evaluation import finetune, rubric as rubric_store
+from app import config
+from app.evaluation import rubric as rubric_store, taste
 from app.pipeline import ingest
 from app.storage import cleanup, memory
 
@@ -68,9 +70,21 @@ def main() -> None:
             "criteria": [{"name": "hook_strength", "weight": 25, "description": "hook"}],
             "preferences": [
                 "Open cold on the highest-action moment.",
+            ],
+            "notes": "drop one-off rule",
+        },
+        source="feedback",
+    )
+    memory.save_rubric(
+        {
+            "version": 3,
+            "owner": "check",
+            "criteria": [{"name": "hook_strength", "weight": 27, "description": "hook"}],
+            "preferences": [
+                "Open cold on the highest-action moment.",
                 "Caption only what is visible in the frame.",
             ],
-            "notes": "learned from pick A",
+            "notes": "rule confirmed on a second pick",
         },
         source="feedback",
     )
@@ -93,21 +107,30 @@ def main() -> None:
     )
 
     rubric = memory.load_rubric()
-    assert rubric is not None and rubric["version"] == 2, rubric
+    assert rubric is not None and rubric["version"] == 3, rubric
     prefs = {p["rule"]: p["times_seen"] for p in memory.list_preferences()}
-    assert "Caption only what is visible in the frame." in prefs, prefs
+    assert prefs.get("Caption only what is visible in the frame.", 0) >= 2, prefs
+    assert prefs.get("Open cold on the highest-action moment.") == 1, prefs
     refs = memory.list_references()
     assert refs[0]["notes"] == "자막 타이밍이 좋다", refs[0]
 
-    examples = finetune.rebuild_examples()
-    assert len(examples) >= finetune.MIN_EXAMPLES, len(examples)
-    kinds = {ex["kind"] for ex in examples}
-    assert "judge" in kinds and "writer" in kinds, kinds
-    row = examples[0]["messages"]
-    assert "preferred_output" in row and "non_preferred_output" in row, row
-    assert row["preferred_output"] != row["non_preferred_output"]
-    memory.replace_ft_examples(examples)
-    assert len(memory.list_ft_examples()) >= finetune.MIN_EXAMPLES
+    # one-off rules stay out of the prompt; confirmed rules get in, capped
+    rules = taste.taste_rules()
+    assert rules, "no learned rules reached the prompt"
+    assert len(rules) <= config.TASTE_RULES_IN_PROMPT, rules
+    assert "Caption only what is visible in the frame." in rules, rules
+    assert "Open cold on the highest-action moment." not in rules, rules
+    assert taste.taste_prompt() in taste.writer_system(), "writer lost learned taste"
+
+    learning = taste.status()
+    assert learning["engine"] == "gemini+grok+gpt", learning
+    assert "grok" in config.GROK_MODEL, config.GROK_MODEL
+    assert "gemini" in config.GEMINI_MODEL, config.GEMINI_MODEL
+    assert learning["vision_model"] == config.GEMINI_MODEL, learning
+    assert learning["model"] == config.GROK_MODEL, learning
+    assert learning["picks"] == 1 and learning["rubric_version"] == 3, learning
+    assert learning["recent"][0]["choice"] == "A", learning["recent"]
+    assert learning["rules_in_prompt"] == ["Caption only what is visible in the frame."], learning
 
     from app.pipeline import highlight
     windows = highlight._candidate_windows(
@@ -116,9 +139,49 @@ def main() -> None:
     )
     assert windows and windows[0][0] <= 140 and windows[0][1] >= 155, windows
 
+    from app.pipeline import verify
+    tiny = [{
+        "label": "A",
+        "shots": [
+            {"video_index": 0, "start_sec": s, "end_sec": s + 1.0, "caption": "c",
+             "caption_style": "pop", "fx": "none"}
+            for s in (5.0, 40.0, 90.0)
+        ],
+    }]
+    fixed = verify.validate_variants(tiny, [{"duration_sec": 300.0}])[0]
+    assert fixed["total_sec"] >= config.SHORT_FLOOR_SEC, fixed["total_sec"]
+    spans = sorted((s["start_sec"], s["end_sec"]) for s in fixed["shots"])
+    for (_, prev_end), (next_start, _) in zip(spans, spans[1:]):
+        assert next_start >= prev_end - config.MAX_SHOT_OVERLAP_SEC, spans
+
+    from app.pipeline import narrate
+    spoken = narrate._lines({"shots": [
+        {"start_sec": 0, "end_sec": 3, "caption": "hi", "caption_style": "pop"},
+        {"start_sec": 9, "end_sec": 13, "caption": "", "caption_style": "pop"},
+        {"start_sec": 20, "end_sec": 24, "caption": "bye", "caption_style": "plate"},
+    ]})
+    assert [round(o, 2) for o, _, _ in spoken] == [0.0, 7.0], spoken
+
+    from app.pipeline import brief as brief_mod, highlight
+    parenting = brief_mod.normalize({"channel": "parenting", "why": "첫 걸음"})
+    assert "귀엽" in parenting["hunt"], parenting
+    compiled = brief_mod.compile(parenting)
+    assert "첫 걸음" in compiled and "육아" in compiled
+    gaming = brief_mod.normalize({"channel": "gaming", "why": "클러치"})
+    assert "클러치" in gaming["hunt"] or "킬" in gaming["hunt"]
+    assert highlight._score({"brief_fit": 9, "hook_potential": 2, "intensity": 1}) > highlight._score(
+        {"brief_fit": 2, "hook_potential": 9, "intensity": 9}
+    )
+
     prompt = rubric_store.rubric_as_prompt()
-    assert "Learned editor preferences" not in prompt, prompt
-    assert "fine-tuned" in prompt
+    assert "learned, v3" in prompt, prompt
+    assert "essay" not in prompt.lower()
+    assert "stop the scroll" in prompt or "first 3 seconds" in prompt, prompt
+
+    args = ingest._ytdlp_extra_args()
+    if shutil.which("node"):
+        joined = " ".join(args)
+        assert "--js-runtimes" in joined and "node" in joined, args
 
     urls = ingest.parse_youtube_urls(
         "https://youtube.com/shorts/abc123\nhttps://youtu.be/xyz789"
@@ -139,7 +202,7 @@ def main() -> None:
     leftover = {p.name for p in work.iterdir()}
     assert leftover == {"job.json"}, leftover
 
-    print("ok", memory.stats(), "examples", len(examples))
+    print("ok", memory.stats(), "rules in prompt", len(rules))
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 import sys
 import uuid
@@ -47,25 +48,88 @@ def _ytdlp_argv() -> list[str]:
     return [sys.executable, "-m", "yt_dlp"]
 
 
+def _js_runtime_arg() -> list[str]:
+    """YouTube extraction needs Node/Deno. Deno is default; this box has Node."""
+    for name in ("deno", "node"):
+        path = shutil.which(name)
+        if path:
+            return ["--js-runtimes", f"{name}:{path}"]
+    return []
+
+
+def _cookie_browsers() -> list[str]:
+    raw = (config.YTDLP_COOKIES_FROM_BROWSER or "").strip().lower()
+    if config.ON_VERCEL or raw in ("none", "off", "0"):
+        return []
+    return [b.strip() for b in raw.split(",") if b.strip()]
+
+
+def _ytdlp_extra_args(browser: str | None = None) -> list[str]:
+    args = [
+        "--extractor-args",
+        "youtube:player_client=ios,web,mweb,-android_sdkless",
+        *_js_runtime_arg(),
+    ]
+    if browser:
+        args += ["--cookies-from-browser", browser]
+    return args
+
+
+def _yt_blocked(err: str) -> bool:
+    return any(
+        s in err
+        for s in (
+            "Sign in to confirm",
+            "403: Forbidden",
+            "Could not copy",
+            "cookie database",
+            "Failed to decrypt",
+        )
+    )
+
+
 def download_youtube(url: str, dest_dir: Path, stem: str | None = None) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
     stem = stem or f"yt_{uuid.uuid4().hex[:8]}"
     out_tpl = dest_dir / f"{stem}.%(ext)s"
-    cmd = _ytdlp_argv() + [
-        "-f", "bv*[height<=1080]+ba/b[height<=1080]/b",
-        "--merge-output-format", "mp4",
-        "--no-playlist",
-        "-o", str(out_tpl),
-        url,
-    ]
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-    except FileNotFoundError as e:
+    last_err = ""
+    attempts: list[str | None] = [None, *_cookie_browsers()]
+    for browser in attempts:
+        cmd = _ytdlp_argv() + _ytdlp_extra_args(browser) + [
+            "-f", "bv*[height<=1080]+ba/b[height<=1080]/b",
+            "--merge-output-format", "mp4",
+            "--no-playlist",
+            "-o", str(out_tpl),
+            url,
+        ]
+        try:
+            proc = subprocess.run(
+                cmd, timeout=config.YTDLP_TIMEOUT_SEC, **config.SUBPROCESS_TEXT,
+            )
+        except FileNotFoundError as e:
+            raise IngestError(
+                "yt-dlp is not installed. pip install -r requirements.txt"
+            ) from e
+        except subprocess.TimeoutExpired as e:
+            raise IngestError(
+                f"yt-dlp timed out after {config.YTDLP_TIMEOUT_SEC}s. "
+                "원본 mp4를 직접 업로드하세요."
+            ) from e
+        if proc.returncode == 0:
+            break
+        last_err = (proc.stderr or "")[-800:]
+        if _yt_blocked(last_err):
+            continue
+        if "JavaScript runtime" in last_err:
+            raise IngestError(
+                "YouTube needs Node or Deno for yt-dlp. Install Node, then retry."
+            )
+        raise IngestError(f"yt-dlp failed: {last_err}")
+    else:
         raise IngestError(
-            "yt-dlp is not installed. pip install -r requirements.txt"
-        ) from e
-    if proc.returncode != 0:
-        raise IngestError(f"yt-dlp failed: {(proc.stderr or '')[-400:]}")
+            "YouTube blocked the download (bot check / locked browser cookies). "
+            "Chrome·Edge를 완전히 종료한 뒤 다시 시도하거나, 원본 mp4를 직접 업로드하세요."
+        )
     matches = list(dest_dir.glob(f"{stem}.*"))
     if not matches:
         raise IngestError("download produced no file")
@@ -74,13 +138,21 @@ def download_youtube(url: str, dest_dir: Path, stem: str | None = None) -> Path:
 
 def probe(path: Path) -> dict:
     """ffprobe metadata: duration, resolution, fps."""
+    if not path.is_file():
+        raise IngestError(f"{path.name}: file not found")
+    if path.stat().st_size == 0:
+        raise IngestError(f"{path.name}: file is empty (upload may have failed)")
     cmd = [
         config.FFPROBE_BIN, "-v", "error",
         "-print_format", "json",
         "-show_format", "-show_streams",
         str(path),
     ]
-    out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+    proc = subprocess.run(cmd, **config.SUBPROCESS_TEXT)
+    out = (proc.stdout or "").strip()
+    if proc.returncode != 0 or not out:
+        err = (proc.stderr or "").strip() or f"exit {proc.returncode}"
+        raise IngestError(f"{path.name}: ffprobe failed — {err[:300]}")
     meta = json.loads(out)
     vstream = next(
         (s for s in meta.get("streams", []) if s.get("codec_type") == "video"), None
@@ -123,3 +195,25 @@ def validate_inputs(paths: list[Path]) -> list[dict]:
             )
         infos.append(info)
     return infos
+
+
+if __name__ == "__main__":
+    import subprocess
+    import unicodedata
+
+    upload = config.UPLOAD_DIR
+    upload.mkdir(parents=True, exist_ok=True)
+    src = upload / "_ingest_selfcheck.mp4"
+    subprocess.run(
+        [config.FFMPEG_BIN, "-y", "-f", "lavfi", "-i", "color=c=blue:s=320x240:d=2",
+         "-c:v", "libx264", str(src)],
+        check=True, capture_output=True,
+    )
+    for name in ("첫 브이로그.mov", unicodedata.normalize("NFD", "첫 브이로그") + ".mov"):
+        dest = upload / name
+        dest.write_bytes(src.read_bytes())
+        info = probe(dest)
+        assert info["duration_sec"] >= 1.0, info
+        dest.unlink(missing_ok=True)
+    src.unlink(missing_ok=True)
+    print("ingest self-check ok")

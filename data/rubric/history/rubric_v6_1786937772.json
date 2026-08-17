@@ -1,5 +1,5 @@
 {
-  "version": 10,
+  "version": 6,
   "owner": "xlog baseline — mainstream shorts conventions + pilot creator references (LoL gameplay commentary, live-action narrative, movie-clip recut, family vlog comedy)",
   "criteria": [
     {
@@ -30,7 +30,7 @@
     {
       "name": "moment_selection",
       "weight": 8,
-      "description": "The genuinely best raw moments were used, not filler. Prefer shots that contain concrete, readable evidence (faces at peak emotion, hands, marks, revealed names/objects, props that raise stakes) over connective coverage such as low-angle feet, wide walking, or empty-space shots. Leaving out an objectively funny sequence is acceptable — even correct — when including it would fork the premise; do not deduct for omissions that protect the single thread. Visual variety within the premise matters — when the edit loops the same two clips over and over, the footage itself becomes repetitive filler regardless of how good those two clips are, and shot selection has failed to serve the caption narrative."
+      "description": "The genuinely best raw moments were used, not filler. Prefer shots that contain concrete, readable evidence (faces at peak emotion, hands, marks, revealed names/objects, props that raise stakes) over connective coverage such as low-angle feet, wide walking, or empty-space shots. Leaving out an objectively funny sequence is acceptable — even correct — when including it would fork the premise; do not deduct for omissions that protect the single thread."
     },
     {
       "name": "caption_voice",
@@ -67,11 +67,7 @@
     "End clip recuts on a wide, caption-free shot for the final 3–4 seconds so the music and image resolve without text.",
     "Keep a driving, constant-pulse music bed under montage sections so the cuts land on the beat.",
     "Runtime up to ~60s is fine when every shot earns a laugh or adds information — '핵심만' means removing dead weight, not hitting a shorter duration.",
-    "Avoid emojis and on-screen title cards.",
-    "When captions carry the comedy narrative, the footage must keep pace with visual variety — do not loop the same two clips over and over; the edit needs enough different shots to support the caption story without the footage itself becomes repetitive.",
-    "When both edits are technically competent and the judge's scores are close, trust the edit that opens on the highest-emotion / highest-action frame and states the situation clearly in the first line — clarity of premise in the hook often matters more than tighter mid-roll pacing.",
-    "When evaluating hook setups in vlog comedy, prioritize immediate asymmetric contrast (such as bike versus walking) presented right in the opening frames over chronological setup, ensuring the core comedic premise is legible immediately.",
-    "Prioritize coherent narrative flow and logical scene transitions over hyper-optimized isolated shot pacing; connecting dialogue, setup, and climax into a single unified thread outweighs raw structural polish."
+    "Avoid emojis and on-screen title cards."
   ],
-  "notes": "v10 — creator selected Edit A over AI judge recommendation (B) despite the judge citing structural and pacing advantages in B. The creator valued A's superior narrative flow and cohesive scene linkage, prioritizing a unified storytelling arc over individual cut optimization. Added preference supporting cohesive scene connectivity and clear narrative thread continuity over isolated structural tweaks."
+  "notes": "v6 — second recorded creator override, this time with no comment, confirming that the v5 hook_strength rewrite is working. The judge picked B (8.64) over A (6.64), the second opinion picked A citing 'stronger and clearer hook' (slapstick fall) but the creator picked B silently, meaning B's situation-declaring hook ('이 짐 싣고 자전거 타는 게' at 0.6s showing the problem state immediately) was preferred over A's spectacle cold-open (fall on pavement, premise revealed only at 3s). No new criteria defects surfaced — the judge's reasoning correctly applied the v5 rubric: hook_strength 9 vs 3 on the timing of premise declaration, instruction_fit 9 vs 8 on '핵심만' = every shot earns rather than runtime cap, narrative_clarity 9 vs 7 on payoff-first structure clarity, pacing 8 vs 6 on dead-air avoidance and smooth causal handoffs. The second opinion still valued spectacle over clarity but the creator's silent choice reaffirms the current rubric's priority ranking. No weight adjustments needed; no new preferences to extract. This is a validation data point, not a correction signal."
 }

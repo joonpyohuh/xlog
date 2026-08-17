@@ -29,10 +29,8 @@ SEED_RUBRIC: dict = {
         {
             "name": "mainstream_convention",
             "weight": 20,
-            "description": "Follows the most universally accepted editing style of "
-                           "actual popular Shorts/Reels: proven cut rhythm, caption "
-                           "placement, and structure. Safe and broadly appealing "
-                           "beats experimental or niche choices.",
+            "description": "Follows current X/TikTok caption and hook grammar: "
+                           "reaction, roast, reversal. Safe generic edits score low.",
         },
         {
             "name": "instruction_fit",
@@ -61,9 +59,7 @@ SEED_RUBRIC: dict = {
         # Learned preferences accumulate here from creator evaluations,
         # e.g. "prefers cuts on motion", "dislikes shots longer than 5s".
     ],
-    "notes": "Seed rubric. Baseline = the most universal, safe mainstream "
-             "shorts editing style, as seen in actual popular shorts. Refined "
-             "continuously from the pilot creator's evaluations.",
+    "notes": "Seed rubric. Baseline = scroll-stopping captions, not a safe recap.",
 }
 
 
@@ -88,11 +84,15 @@ def save_rubric(rubric: dict, source: str = "unknown") -> None:
 
 
 def rubric_as_prompt() -> str:
-    """Fixed-size seed only. Learned taste is fine-tuned, not injected."""
-    r = SEED_RUBRIC
-    lines = ["## Editing rubric (seed baseline — learned taste is fine-tuned)"]
-    for c in r["criteria"]:
-        lines.append(f"- {c['name']} (weight {c['weight']}): {c['description']}")
+    """Weights may move; wording stays on the seed so one pick cannot rewrite
+    what 'hook' means. Extra criteria the learner invented stay out."""
+    r = load_rubric()
+    seed_desc = {c["name"]: c["description"] for c in SEED_RUBRIC["criteria"]}
+    live = {c["name"]: c for c in r.get("criteria") or []}
+    lines = [f"## Editing rubric (learned, v{r.get('version', 1)})"]
+    for c in SEED_RUBRIC["criteria"]:
+        weight = (live.get(c["name"]) or c).get("weight", c["weight"])
+        lines.append(f"- {c['name']} (weight {weight}): {seed_desc[c['name']]}")
     return "\n".join(lines)
 
 

@@ -31,10 +31,14 @@ def client() -> Client:
 def _row_to_rubric(row: dict) -> dict:
     criteria = row["criteria"]
     preferences = row["preferences"]
-    if isinstance(criteria, str):
+    if isinstance(criteria, str) and criteria.strip():
         criteria = json.loads(criteria)
-    if isinstance(preferences, str):
+    elif criteria is None:
+        criteria = []
+    if isinstance(preferences, str) and preferences.strip():
         preferences = json.loads(preferences)
+    elif preferences is None:
+        preferences = []
     return {
         "version": row["version"],
         "owner": row["owner"],
@@ -293,6 +297,10 @@ def list_preferences() -> list[dict]:
         .execute()
     )
     return r.data
+
+
+def reinforce_preferences(rules: list[str]) -> None:
+    _sync_preferences(rules, "feedback", "restate", bump=True)
 
 
 def stats() -> dict:

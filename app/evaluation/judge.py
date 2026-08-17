@@ -1,14 +1,15 @@
 """AI judge: scores the two RENDERED shorts by watching their frames.
 
-Learned taste lives in the fine-tuned (DPO) model, not a growing prompt.
+Learned taste rides in as a capped, reinforcement-ranked rule block so the
+prompt stays a fixed size as evidence accumulates (see taste.py).
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from app.evaluation import finetune
-from app.llm import claude
+from app.evaluation import rubric as rubric_store, taste
+from app.llm import grok
 from app.pipeline import preprocess
 
 _VERDICT_SCHEMA = {
@@ -47,21 +48,6 @@ _VERDICT_SCHEMA = {
 }
 
 
-def _sample_short(path: Path, label: str, tmp: Path) -> tuple[list[str], list[str]]:
-    """Frames + text labels for one rendered short."""
-    from app import config
-    frames = preprocess.extract_frames(
-        path, tmp / f"judge_{label}", fps=config.JUDGE_FPS,
-    )
-    if not frames:
-        return [], []
-    step = max(1, len(frames) // config.JUDGE_MAX_FRAMES)
-    sampled = frames[::step][: config.JUDGE_MAX_FRAMES]
-    b64s = [preprocess.frame_to_b64(f["path"]) for f in sampled]
-    tags = [f"[edit {label} @ {f['t']:.1f}s]" for f in sampled]
-    return b64s, tags
-
-
 def _pixel_user(
     variants: list[dict],
     analysis_summary: str,
@@ -78,9 +64,12 @@ def _pixel_user(
          if instruction.strip() else "")
         + f"Source footage summary:\n{analysis_summary}\n\n"
         "You are watching the RENDERED 9:16 shorts (pixels), not just the "
-        "shot list. Frames from each edit follow, labelled with edit letter "
-        "and timestamp. Score what you SEE: hook in the first seconds, "
-        "caption color/placement, punch-ins, dead air, clarity of payoff.\n"
+        "shot list. The creator's brief is the scoring key: does this short "
+        "contain the scenes they would have cut themselves, and are those "
+        "scenes punched the way they asked? A safe pretty edit loses to a "
+        "funnier, more specific caption. Extra swearing is not a point. "
+        "Score what you SEE: first-line hook, whether the joke needs this "
+        "footage, punch-ins, dead air, payoff twist.\n"
         "Shot-plan metadata (for reference only):\n"
         + json.dumps(
             [
@@ -98,12 +87,11 @@ def _pixel_user(
         raw = (outputs or {}).get(label)
         if not raw or not Path(raw).exists():
             continue
-        b64s, tags = _sample_short(Path(raw), label, tmp)
-        for tag, b64 in zip(tags, b64s):
+        for tag, b64 in preprocess.sample_short(Path(raw), label, tmp):
             parts.append({"type": "text", "text": tag})
             parts.append({
-                "type": "image",
-                "source": {"type": "base64", "media_type": "image/jpeg", "data": b64},
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
             })
     if len(parts) == 1:
         return intro + "\n\n(no rendered files — fall back to plans)\n" + json.dumps(
@@ -123,17 +111,16 @@ def judge_variants(
     from app import config
 
     system = (
-        finetune.JUDGE_SYSTEM
+        taste.JUDGE_SYSTEM
         + " Judge the actual rendered video. Captions, crop, pacing, and "
         "dead frames you see outweigh the written shot plan."
     )
-    if finetune.active_model() is None:
-        extra = finetune.seed_criteria_prompt()
-        taste = finetune.fallback_taste_prompt()
-        system = system + "\n\n" + extra + (("\n\n" + taste) if taste else "")
+    learned = taste.taste_prompt()
+    system += "\n\n" + rubric_store.rubric_as_prompt() + ("\n\n" + learned if learned else "")
     user = _pixel_user(
         variants, analysis_summary, instruction, outputs or {}, work_dir,
     )
-    return claude.complete_json(
-        system, user, _VERDICT_SCHEMA, max_tokens=8192, effort=config.JUDGE_EFFORT
+    return grok.complete_json(
+        system, user, _VERDICT_SCHEMA,
+        max_tokens=8192, effort=config.JUDGE_EFFORT, schema_name="verdict",
     )
