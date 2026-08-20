@@ -1,7 +1,7 @@
 """Core-moment extraction.
 
-Preferred path: one Gemini call per source (native video). JPEG chunking
-is only the fallback when the Files API rejects the file.
+GPT watches sampled frames (quotes lines, names mismatches). Gemini native
+video is the fallback when OpenAI is down.
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable
 
 from app import config
-from app.llm import gemini, grok
+from app.llm import gemini, grok, openai_client
 from app.pipeline import brief as brief_mod
 from app.pipeline import preprocess
 from app.pipeline import quality as quality_mod
@@ -34,7 +34,7 @@ _MOMENTS_SCHEMA = {
                 },
                 "required": [
                     "start_sec", "end_sec", "description",
-                    "mood", "intensity", "hook_potential",
+                    "mood", "intensity", "hook_potential", "brief_fit",
                 ],
                 "additionalProperties": False,
             },
@@ -45,23 +45,21 @@ _MOMENTS_SCHEMA = {
 }
 
 _SYSTEM = (
-    "You are a senior editor watching a full source video. Use the actual "
-    "timecode of the file (seconds from the start). Do not just flag pretty "
-    "or busy shots. Infer what is happening: who is there, what changed, "
-    "what is funny or at stake, and how beats connect into a story "
-    "(setup → turn → payoff). Extract moments that carry that narrative. "
-    "Rate intensity (1-10), hook_potential (1-10, could this open a short?), "
-    "brief_fit (1-10). Describe each moment so a writer who cannot see the "
-    "video could still cut the story. Prefer 8-16 moments spanning early, "
-    "middle and late parts of the source."
+    "You are a senior editor watching source footage. Use the actual "
+    "timecode of the file (seconds from the start). Do not flag pretty "
+    "or busy shots. For each moment write what a writer needs to caption it:\n"
+    "- quote spoken lines and readable on-screen text exactly\n"
+    "- name the mismatch (said vs done, intent vs result, 1 vs many)\n"
+    "- who is there and what changed\n"
+    "Rate intensity (1-10), hook_potential (1-10), brief_fit (1-10). "
+    "Prefer 8-16 moments spanning early, middle and late parts."
 )
 
 _REFINE_SYSTEM = (
     "You previously flagged this time window as promising, but you only saw "
     "sparse frames. You now see the SAME window at ~2 fps. Tighten start/end "
-    "to the actual 1–2s beat (or keep a longer range if the whole run is "
-    "usable). Drop anything that looked good at 0.5 fps but is dead air here. "
-    "Timestamps must match the frames you see."
+    "to the actual 1–2s beat. Quote the spoken line if one lands here. "
+    "Drop dead air. Timestamps must match the frames you see."
 )
 
 
@@ -90,7 +88,12 @@ def _analyze_chunk(
         f"{ts[0]:.1f}s to {ts[-1]:.1f}s follow, each labelled with its "
         f"timestamp. {note or 'Extract the key moments in this range.'}"
     )
-    if gemini.available():
+    if openai_client.available():
+        result = openai_client.analyze_frames(
+            system=system, prompt=prompt, frames_b64=b64s,
+            timestamps=ts, schema=_MOMENTS_SCHEMA,
+        )
+    elif gemini.available():
         result = gemini.analyze_frames(
             system=system, prompt=prompt, frames_b64=b64s,
             timestamps=ts, schema=_MOMENTS_SCHEMA,
@@ -224,7 +227,9 @@ def analyze_all(
     source_edited: bool = False,
     quality: str = "fast",
 ) -> dict:
-    """One Gemini pass per source when possible; JPEG chunks otherwise."""
+    """GPT watches sampled frames when a key is present. Gemini native
+    video is only the fallback — it is cheap but it labels action instead
+    of quoting the line that makes the joke."""
     spec = quality_mod.resolve(quality)
     def ping(detail: str, frac: float) -> None:
         if on_progress:
@@ -237,8 +242,8 @@ def analyze_all(
     if source_edited:
         hunt += (
             "\n\nThis source was already edited once and may have burned-in "
-            "subtitles on the lower fifth of the frame. Ignore on-screen text; "
-            "judge what happens in the picture."
+            "subtitles on the lower fifth of the frame. Ignore burned-in "
+            "caption graphics; still quote spoken lines you can lip-read."
         )
 
     per_video = []
@@ -246,10 +251,13 @@ def analyze_all(
     for i, info in enumerate(video_infos):
         path = Path(info["path"])
         dur = float(info["duration_sec"] or 1.0)
-        ping(f"원본 파일 업로드 · AI 분석 {i + 1}/{nvid} · {dur / 60:.0f}분", 0.08 + 0.7 * i / nvid)
+        ping(f"Reading frames {i + 1}/{nvid} · {dur / 60:.0f} min", 0.08 + 0.7 * i / nvid)
         result = None
         used_native = False
-        if gemini.available():
+        # GPT has no cheap native-video upload. Prefer its frames so the
+        # writer later sees quoted dialogue, not a generic fight label.
+        skip_native = openai_client.available()
+        if gemini.available() and not skip_native:
             try:
                 result = _analyze_video_native(
                     path, i, dur, hunt,
@@ -278,7 +286,7 @@ def analyze_all(
         if used_native:
             refined = coarse
         else:
-            ping(f"후보 구간 정밀 스캔 {i + 1}/{nvid}", 0.78 + 0.18 * i / nvid)
+            ping(f"Scanning candidate spans {i + 1}/{nvid}", 0.78 + 0.18 * i / nvid)
             refined = _refine_video(
                 i, path, dur, coarse, work_dir, refine, crop_bottom=crop_bottom,
             )
@@ -288,7 +296,7 @@ def analyze_all(
             {"video_index": i, "name": info["name"],
              "summary": result["summary"], "moments": refined}
         )
-    ping("분석 완료", 1.0)
+    ping("Analysis done", 1.0)
     moments = [m for v in per_video for m in v["moments"]]
     brief_mod.apply_must(moments, must_text)
     return {
@@ -299,6 +307,8 @@ def analyze_all(
 
 
 if __name__ == "__main__":
+    items = _MOMENTS_SCHEMA["properties"]["moments"]["items"]
+    assert set(items["required"]) == set(items["properties"]), items["required"]
     # 14 min source must not explode into 400-frame / 50-per-call vision batches
     dur = 829.0
     fps = min(config.ANALYSIS_FPS, config.COARSE_MAX_FRAMES / dur)

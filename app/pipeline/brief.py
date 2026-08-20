@@ -12,52 +12,84 @@ from typing import Any
 
 CHANNELS: dict[str, dict[str, str]] = {
     "parenting": {
-        "label": "육아·가족",
-        "hunt": "가장 귀엽거나 마음이 움직이는 장면 — 웃음, 첫 말·첫 걸음, 안아주는 순간, 실수해도 사랑스러운 표정. 평범한 일과·정리 장면은 버려라.",
-        "emphasize": "감정 정점에서 punch_in 또는 zoom_in으로 얼굴에 붙고, 그 샷은 조금 더 길게 둔다. whip/flash/shake는 거의 쓰지 마라. 자막은 짧은 감탄.",
-        "skip": "이동, 준비, 잔소리, 설명, 빈 방.",
+        "label": "Family",
+        "label_ko": "육아·가족",
+        "hunt": "The cutest or most moving beat — a laugh, first words or first steps, a hug, a face that's lovely even when they mess up. Drop chores and housekeeping.",
+        "hunt_ko": "가장 귀엽거나 마음이 움직이는 장면 — 웃음, 첫 말·첫 걸음, 안아주는 순간, 실수해도 사랑스러운 표정. 평범한 일과·정리 장면은 버려라.",
+        "emphasize": "Punch in or zoom on the face at the emotional peak and hold that shot a beat longer. Almost no whip, flash, or shake. Captions are short reactions.",
+        "emphasize_ko": "감정 정점에서 punch_in 또는 zoom_in으로 얼굴에 붙고, 그 샷은 조금 더 길게 둔다. whip/flash/shake는 거의 쓰지 마라. 자막은 짧은 감탄.",
+        "skip": "Travel, setup, lectures, empty rooms.",
+        "skip_ko": "이동, 준비, 잔소리, 설명, 빈 방.",
     },
     "gaming": {
-        "label": "게임·매드무비",
-        "hunt": "클러치, 킬, 역전, 콤보, 리액션이 터지는 순간 — 명장면만. 로밍·상점·로딩은 버려라.",
-        "emphasize": "킬/클러치에 punch_in + flash 또는 whip. 자막은 짧은 반응(와/미쳤다/개꿀). 페이오프를 훅으로 열어라.",
-        "skip": "로딩, 설정, 조용한 이동, 패배 변명.",
+        "label": "Gaming",
+        "label_ko": "게임·매드무비",
+        "hunt": "Clutch, kill, comeback, combo, the reaction — highlights only. Drop roaming, shop, loading.",
+        "hunt_ko": "클러치, 킬, 역전, 콤보, 리액션이 터지는 순간 — 명장면만. 로밍·상점·로딩은 버려라.",
+        "emphasize": "Punch in plus flash or whip on the kill/clutch. Captions are short reactions. Open on the payoff.",
+        "emphasize_ko": "킬/클러치에 punch_in + flash 또는 whip. 자막은 짧은 반응(와/미쳤다/개꿀). 페이오프를 훅으로 열어라.",
+        "skip": "Loading, settings, quiet travel, loss copes.",
+        "skip_ko": "로딩, 설정, 조용한 이동, 패배 변명.",
     },
     "vlog": {
-        "label": "브이로그·일상",
-        "hunt": "오늘을 한 줄로 말할 수 있는 장면 — 장소 한 컷, 사람 표정, 그 날의 사건. 비슷한 풍경을 반복하지 마라.",
-        "emphasize": "훅은 결과/한 줄 상황 선언. 컷은 부드럽게, 자막은 상황 설명 한 줄.",
-        "skip": "이동 과정, 가방 정리, 반복되는 풍경.",
+        "label": "Vlog",
+        "label_ko": "브이로그·일상",
+        "hunt": "The one beat that sums up the day — a place, a face, the thing that happened. Don't repeat the same landscape.",
+        "hunt_ko": "오늘을 한 줄로 말할 수 있는 장면 — 장소 한 컷, 사람 표정, 그 날의 사건. 비슷한 풍경을 반복하지 마라.",
+        "emphasize": "Hook with the result or a one-line situation. Soft cuts. Captions explain the moment in one line.",
+        "emphasize_ko": "훅은 결과/한 줄 상황 선언. 컷은 부드럽게, 자막은 상황 설명 한 줄.",
+        "skip": "Getting there, packing, repeated scenery.",
+        "skip_ko": "이동 과정, 가방 정리, 반복되는 풍경.",
     },
     "comedy": {
-        "label": "예능·리액션",
-        "hunt": "웃음이 터지는 비트, 드립, 표정 붕괴, 반전. 설명이 긴 세팅은 최소만.",
-        "emphasize": "펀치라인에 flash/whip, 리액션 얼굴에 punch_in. 자막은 말맛 살린 한 줄.",
-        "skip": "웃음 없는 설명, 같은 농담의 재탕.",
+        "label": "Comedy",
+        "label_ko": "예능·리액션",
+        "hunt": "The laugh, the line, the face-break, the turn. Keep setup short.",
+        "hunt_ko": "웃음이 터지는 비트, 드립, 표정 붕괴, 반전. 설명이 긴 세팅은 최소만.",
+        "emphasize": "Flash/whip on the punchline, punch in on the reaction. Captions keep the joke's rhythm.",
+        "emphasize_ko": "펀치라인에 flash/whip, 리액션 얼굴에 punch_in. 자막은 말맛 살린 한 줄.",
+        "skip": "Setup with no laugh, the same joke twice.",
+        "skip_ko": "웃음 없는 설명, 같은 농담의 재탕.",
     },
     "howto": {
-        "label": "정보·하우투",
-        "hunt": "결과물 먼저, 그다음 핵심 한 단계. 시청자가 따라 할 수 있는 동작만.",
-        "emphasize": "결과 샷으로 훅. 단계마다 짧은 자막. 효과는 절제, 중요한 숫자/재료만 box/emphasis.",
-        "skip": "인사, 구독 유도, 실패 테이크, 같은 동작 반복.",
+        "label": "How-to",
+        "label_ko": "정보·하우투",
+        "hunt": "Result first, then the one step that matters. Only actions a viewer can copy.",
+        "hunt_ko": "결과물 먼저, 그다음 핵심 한 단계. 시청자가 따라 할 수 있는 동작만.",
+        "emphasize": "Hook on the result. Short captions per step. FX stay quiet; box only the number or ingredient that matters.",
+        "emphasize_ko": "결과 샷으로 훅. 단계마다 짧은 자막. 효과는 절제, 중요한 숫자/재료만 box/emphasis.",
+        "skip": "Hellos, subscribe asks, failed takes, the same move twice.",
+        "skip_ko": "인사, 구독 유도, 실패 테이크, 같은 동작 반복.",
     },
     "beauty": {
-        "label": "뷰티·패션",
-        "hunt": "비포/애프터, 가장 예쁜 각도, 색·질감이 살아있는 클로즈업.",
-        "emphasize": "애프터를 훅으로. zoom_in on 디테일. 자막은 제품/포인트 한 단어.",
-        "skip": "준비, 말만 하는 토크, 흐린 조명.",
+        "label": "Beauty",
+        "label_ko": "뷰티·패션",
+        "hunt": "Before/after, the best angle, close-ups where color and texture live.",
+        "hunt_ko": "비포/애프터, 가장 예쁜 각도, 색·질감이 살아있는 클로즈업.",
+        "emphasize": "Hook on the after. Zoom in on detail. Captions are one product word.",
+        "emphasize_ko": "애프터를 훅으로. zoom_in on 디테일. 자막은 제품/포인트 한 단어.",
+        "skip": "Prep, talking-head only, muddy light.",
+        "skip_ko": "준비, 말만 하는 토크, 흐린 조명.",
     },
     "pets": {
-        "label": "반려동물",
-        "hunt": "가장 귀엽거나 웃긴 행동 — 고개 기울임, 점프, 실패, 주인 보는 눈. 앉아있기만 한 컷은 버려라.",
-        "emphasize": "얼굴/발에 punch_in. 자막은 의성어·짧은 대사. 정점은 홀드.",
-        "skip": "빈 방, 잠만 자는 긴 컷, 손만 보이는 정돈.",
+        "label": "Pets",
+        "label_ko": "반려동물",
+        "hunt": "The cutest or funniest move — head tilt, jump, fail, looking at the owner. Drop clips of them just sitting.",
+        "hunt_ko": "가장 귀엽거나 웃긴 행동 — 고개 기울임, 점프, 실패, 주인 보는 눈. 앉아있기만 한 컷은 버려라.",
+        "emphasize": "Punch in on the face or paws. Captions are onomatopoeia or a short line. Hold the peak.",
+        "emphasize_ko": "얼굴/발에 punch_in. 자막은 의성어·짧은 대사. 정점은 홀드.",
+        "skip": "Empty rooms, long sleeping shots, hands tidying off-camera.",
+        "skip_ko": "빈 방, 잠만 자는 긴 컷, 손만 보이는 정돈.",
     },
     "other": {
-        "label": "기타",
-        "hunt": "이 채널이 구독자에게 약속하는 그 장면 — 시청자가 스크롤을 멈추는 이유.",
-        "emphasize": "그 장면을 훅에 두고 punch_in. 나머지는 그 장면을 설명하는 데만 쓴다.",
-        "skip": "약속과 상관없는 과정, 반복.",
+        "label": "Other",
+        "label_ko": "기타",
+        "hunt": "The scene this channel promises subscribers — why someone stops scrolling.",
+        "hunt_ko": "이 채널이 구독자에게 약속하는 그 장면 — 시청자가 스크롤을 멈추는 이유.",
+        "emphasize": "Put that scene in the hook and punch in. Everything else only sets it up.",
+        "emphasize_ko": "그 장면을 훅에 두고 punch_in. 나머지는 그 장면을 설명하는 데만 쓴다.",
+        "skip": "Process that isn't the promise, repeats.",
+        "skip_ko": "약속과 상관없는 과정, 반복.",
     },
 }
 
@@ -267,9 +299,9 @@ def presets_for_ui() -> list[dict[str, str]]:
 
 if __name__ == "__main__":
     b = normalize({"channel": "parenting", "why": "첫 걸음"})
-    assert b["hunt"].startswith("가장 귀엽"), b
+    assert b["hunt"].startswith("The cutest"), b
     text = compile(b)
-    assert "첫 걸음" in text and "육아" in text
+    assert "첫 걸음" in text and "Family" in text
     raw = normalize("재밌는 자막")
     assert "재밌는 자막" in compile(raw)
 

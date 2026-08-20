@@ -117,8 +117,8 @@ _FORM_SCHEMA = {
 
 
 def refresh_form(notes: str = "") -> dict:
-    """Ask Claude to regenerate the form document from its knowledge of
-    current IG Reels / YT Shorts conventions, optionally guided by `notes`."""
+    """Regenerate the form document from current Shorts/Reels conventions,
+    optionally guided by `notes`."""
     current = load_form()
     result = gemini.complete_json(
         system=(

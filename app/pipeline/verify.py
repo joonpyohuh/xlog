@@ -4,7 +4,7 @@ Three defenses, cheapest first:
   1. validate_variants(): DETERMINISTIC code checks on shot plans — clamp
      time ranges to real video bounds, drop degenerate shots. No LLM.
   2. cross_check_moments(): GPT independently re-examines the same frames
-     (Claude fallback if OpenAI is down) and confirms / adjusts / rejects
+     (Grok if OpenAI is down) and confirms / adjusts / rejects
      each moment. Rejected moments never reach the screenwriter.
   3. second_opinion(): the same verifier judges the rendered variants; the
      verdict records whether both agree (disagreement is surfaced, not hidden).
@@ -229,7 +229,7 @@ def _complete(
     images: list[tuple[str, str]] | None = None,
     schema_name: str = "result",
 ) -> dict[str, Any]:
-    """Prefer GPT; if the key/quota is dead, a different Claude still verifies."""
+    """Prefer GPT; if the key/quota is dead, Grok verifies."""
     if openai_client.available():
         try:
             if images:

@@ -6,15 +6,17 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app import config
 from app.evaluation import feedback, rubric as rubric_store, taste
 from app.knowledge import reference as reference_mod
 from app.knowledge import shorts_form
-from app.pipeline import brief as brief_mod, ingest, orchestrator
+from app.pipeline import brief as brief_mod, ingest, index as index_mod, orchestrator
+from app.pipeline import premiere as premiere_mod
 from app.storage import cleanup
 from app.storage import jobs as job_store
+from app.storage import traces as traces_store
 
 router = APIRouter(prefix="/api")
 
@@ -59,6 +61,8 @@ async def create_job(
     voice: str = Form("auto"),
     source_edited: str = Form(""),
     quality: str = Form("fast"),
+    editor: str = Form(""),
+    consent: str = Form(""),
 ):
     """Upload 1~3 raw videos and/or paste YouTube URLs + a structured brief."""
     files = files or []
@@ -105,11 +109,30 @@ async def create_job(
     brief_data = brief_mod.normalize(raw_brief)
     compiled = brief_mod.compile(brief_data)
 
+    editor_data: dict = {}
+    if (editor or "").strip():
+        try:
+            parsed_ed = json.loads(editor)
+        except json.JSONDecodeError as e:
+            raise HTTPException(400, f"editor is not JSON: {e}") from e
+        if not isinstance(parsed_ed, dict):
+            raise HTTPException(400, "editor must be an object")
+        editor_data = parsed_ed
+
+    agreed = str(consent).lower() in ("1", "true", "on", "yes")
+    if not agreed:
+        raise HTTPException(
+            400,
+            "Consent is required to start.",
+        )
+
     job = job_store.create_job(
         saved, instruction=compiled, source_urls=urls, brief=brief_data,
         font=font, voice=voice,
         source_edited=str(source_edited).lower() in ("1", "true", "on", "yes"),
         quality=quality,
+        editor=editor_data,
+        consent=True,
     )
     background.add_task(orchestrator.run_job, job["id"])
     return {"job_id": job["id"], "stage": job["stage"]}
@@ -166,20 +189,28 @@ async def evaluate(
     choice: str = Form(...),
     comment: str = Form(""),
 ):
-    """The pilot user picks the better variant; taste is fine-tuned from it."""
+    """Pick which starting timeline to work from. Not a finished-short contest."""
     job = _load_job_or_404(job_id)
-    if job["stage"] != "awaiting_evaluation":
+    if job["stage"] not in ("awaiting_evaluation", "done"):
         raise HTTPException(400, f"job is in stage '{job['stage']}'")
     labels = {v["label"] for v in job["variants"] or []}
     if choice not in labels:
         raise HTTPException(400, f"choice must be one of {sorted(labels)}")
 
-    # Persist the pick immediately so a slow/failed LLM update cannot
-    # swallow the creator's choice.
     job["user_choice"] = choice
     job["user_comment"] = comment
-    job_store.set_stage(job, "done")
-    cleanup.slim_finished_job(job, keep_shorts=True)
+    job_store.save_job(job)
+
+    traces_store.record({
+        "consent": bool(job.get("consent")),
+        "job_id": job_id,
+        "kind": "pick",
+        "pick": choice,
+        "comment": comment,
+        "brief": job.get("brief") or {},
+        "ai_plan": job.get("ai_plan") or traces_store.compact_plan(job.get("variants") or []),
+        "tighten": job.get("tighten") or {},
+    })
 
     current = rubric_store.load_rubric()
 
@@ -193,7 +224,179 @@ async def evaluate(
         )
 
     background.add_task(_learn)
-    return {"ok": True, "rubric_version": current["version"]}
+    return {"ok": True, "rubric_version": current["version"], "working": choice}
+
+
+@router.post("/jobs/{job_id}/recut")
+async def recut(
+    job_id: str,
+    background: BackgroundTasks,
+    drops: str = Form("[]"),
+):
+    """Strike transcript spans and re-encode. No new LLM analysis."""
+    job = _load_job_or_404(job_id)
+    if job["stage"] not in ("awaiting_evaluation", "done"):
+        raise HTTPException(400, f"job is in stage '{job['stage']}'")
+    try:
+        parsed = json.loads(drops or "[]")
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, f"drops is not JSON: {e}") from e
+    if not isinstance(parsed, list):
+        raise HTTPException(400, "drops must be a list")
+    job_store.set_stage(job, "rendering", detail="대본대로 다시 컷 대기")
+    traces_store.record({
+        "consent": bool(job.get("consent")),
+        "job_id": job_id,
+        "kind": "recut",
+        "pick": job.get("user_choice") or "",
+        "ai_plan": job.get("ai_plan") or [],
+        "actions": [{"op": "drop_span", **d} for d in parsed if isinstance(d, dict)],
+        "brief": job.get("brief") or {},
+        "tighten": job.get("tighten") or {},
+    })
+    background.add_task(orchestrator.rerender, job_id, parsed)
+    return {"ok": True, "job_id": job_id}
+
+
+@router.post("/jobs/{job_id}/timeline")
+async def save_timeline(
+    job_id: str,
+    background: BackgroundTasks,
+    shots: str = Form("[]"),
+    actions: str = Form("[]"),
+    comment: str = Form(""),
+    rerender: str = Form(""),
+):
+    """Human-edited starting timeline. This is the training pair."""
+    job = _load_job_or_404(job_id)
+    if job["stage"] not in ("awaiting_evaluation", "done", "rendering"):
+        raise HTTPException(400, f"job is in stage '{job['stage']}'")
+    try:
+        parsed_shots = json.loads(shots or "[]")
+        parsed_actions = json.loads(actions or "[]")
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, f"timeline is not JSON: {e}") from e
+    if not isinstance(parsed_shots, list):
+        raise HTTPException(400, "shots must be a list")
+    label = job.get("user_choice") or (job.get("variants") or [{}])[0].get("label")
+    for v in job.get("variants") or []:
+        if v.get("label") == label:
+            v["shots"] = parsed_shots
+            v["total_sec"] = round(sum(
+                float(s.get("end_sec") or 0) - float(s.get("start_sec") or 0)
+                for s in parsed_shots
+            ), 2)
+    human = traces_store.compact_plan(job.get("variants") or [], label)
+    job["human_plan"] = human
+    job["edit_actions"] = parsed_actions
+    if comment:
+        job["user_comment"] = comment
+    traces_store.record({
+        "consent": bool(job.get("consent")),
+        "job_id": job_id,
+        "kind": "edit",
+        "pick": label,
+        "comment": comment or job.get("user_comment") or "",
+        "brief": job.get("brief") or {},
+        "ai_plan": job.get("ai_plan") or [],
+        "human_plan": human,
+        "actions": parsed_actions,
+        "tighten": job.get("tighten") or {},
+    })
+    want_render = str(rerender).lower() in ("1", "true", "on", "yes")
+    if want_render:
+        job_store.set_stage(job, "rendering", detail="고친 타임라인 미리보기")
+        background.add_task(orchestrator.rerender, job_id, [])
+    else:
+        job_store.set_stage(job, "done", detail="시작 타임라인 저장됨")
+    return {"ok": True, "shots": len(parsed_shots), "rerender": want_render}
+
+
+@router.get("/jobs/{job_id}/timeline.json")
+async def export_timeline(job_id: str):
+    job = _load_job_or_404(job_id)
+    label = job.get("user_choice")
+    body = {
+        "job_id": job_id,
+        "brief": job.get("brief") or {},
+        "pick": label,
+        "ai_plan": job.get("ai_plan") or traces_store.compact_plan(job.get("variants") or []),
+        "human_plan": job.get("human_plan") or traces_store.compact_plan(
+            job.get("variants") or [], label,
+        ),
+        "actions": job.get("edit_actions") or [],
+    }
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        body,
+        headers={"Content-Disposition": f'attachment; filename="xlog_{job_id}_timeline.json"'},
+    )
+
+
+@router.post("/jobs/{job_id}/index")
+async def save_index(
+    job_id: str,
+    actions: str = Form("[]"),
+    comment: str = Form(""),
+):
+    """Keep / discard / handle / reorder. Source files stay intact."""
+    job = _load_job_or_404(job_id)
+    if job["stage"] not in ("awaiting_evaluation", "done"):
+        raise HTTPException(400, f"job is in stage '{job['stage']}'")
+    try:
+        parsed = json.loads(actions or "[]")
+    except json.JSONDecodeError as e:
+        raise HTTPException(400, f"actions is not JSON: {e}") from e
+    if not isinstance(parsed, list):
+        raise HTTPException(400, "actions must be a list")
+    footage = job.get("index") or {"clips": []}
+    job["index"] = index_mod.apply_actions(footage, parsed)
+    job["edit_actions"] = (job.get("edit_actions") or []) + parsed
+    if comment:
+        job["user_comment"] = comment
+    traces_store.record({
+        "consent": bool(job.get("consent")),
+        "job_id": job_id,
+        "kind": "index",
+        "comment": comment or job.get("user_comment") or "",
+        "brief": job.get("brief") or {},
+        "ai_plan": job.get("ai_plan") or [],
+        "human_plan": job["index"].get("clips") or [],
+        "actions": parsed,
+    })
+    job_store.set_stage(job, "done", detail="인덱스 결정 저장. 원본은 그대로입니다")
+    return {"ok": True, "clips": len(job["index"].get("clips") or [])}
+
+
+@router.get("/jobs/{job_id}/premiere.xml")
+async def export_premiere(job_id: str):
+    job = _load_job_or_404(job_id)
+    xml = premiere_mod.fcpxml(
+        job.get("index") or {"clips": []},
+        job.get("video_infos") or [],
+        name=job_id,
+    )
+    return Response(
+        xml,
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="xlog_{job_id}.fcpxml"'},
+    )
+
+
+@router.get("/jobs/{job_id}/markers.csv")
+async def export_markers(job_id: str):
+    job = _load_job_or_404(job_id)
+    csv = premiere_mod.marker_csv(job.get("index") or {"clips": []})
+    return Response(
+        csv,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="xlog_{job_id}_markers.csv"'},
+    )
+
+
+@router.get("/traces")
+async def get_traces():
+    return {"stats": traces_store.stats(), "recent": traces_store.list_traces(20)}
 
 
 @router.get("/learning")

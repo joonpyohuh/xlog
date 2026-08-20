@@ -1,22 +1,32 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>xlog — raw video → shorts</title>
+<title>xlog — lock a rough cut faster</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background:#0d0d0f; color:#eee; font-family:'Segoe UI',system-ui,sans-serif; padding:2rem; max-width:1100px; margin:auto; }
-  h1 { font-weight:300; letter-spacing:.35em; margin-bottom:.3rem; }
-  .sub { color:#888; margin-bottom:2rem; font-size:.9rem; }
-  section { background:#161619; border:1px solid #26262b; border-radius:12px; padding:1.5rem; margin-bottom:1.5rem; }
-  h2 { font-size:1rem; font-weight:600; margin-bottom:1rem; color:#bbb; }
+  body { background:#0d0d0f; color:#eee; font-family:'Segoe UI',system-ui,sans-serif; padding:1.6rem; max-width:1180px; margin:auto; }
+  h1 { font-weight:300; letter-spacing:.32em; margin:0; }
+  .top { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:.55rem; }
+  .lang { display:flex; gap:.35rem; }
+  .lang button.on { background:#fff; color:#000; border-color:#fff; }
+  .what { margin:0 0 1.15rem; max-width:44rem; }
+  .what summary { cursor:pointer; color:#7fd0ff; font-size:.92rem; font-weight:500; list-style:none; }
+  .what summary::-webkit-details-marker { display:none; }
+  .what p { color:#8a8a90; margin-top:.55rem; font-size:.92rem; line-height:1.55; }
+  .path { display:flex; gap:.45rem; flex-wrap:wrap; margin:0 0 1.6rem; }
+  .path span { font-size:.72rem; color:#666; padding:.28rem .7rem; border:1px solid #2a2a30; border-radius:99px; }
+  .path span.now { color:#7fd0ff; border-color:#7fd0ff; }
+  section { background:#161619; border:1px solid #26262b; border-radius:12px; padding:1.35rem 1.5rem; margin-bottom:1.2rem; }
+  h2 { font-size:.95rem; font-weight:600; margin-bottom:.85rem; color:#bbb; }
   input[type=file] { color:#aaa; }
-  button { background:#fff; color:#000; border:0; border-radius:8px; padding:.6rem 1.4rem; font-weight:600; cursor:pointer; }
+  button { background:#fff; color:#000; border:0; border-radius:8px; padding:.6rem 1.3rem; font-weight:600; cursor:pointer; }
   button:disabled { opacity:.35; cursor:default; }
   button.ghost { background:transparent; color:#ccc; border:1px solid #444; }
-  .row { display:flex; gap:1rem; align-items:center; flex-wrap:wrap; }
+  button.tiny { padding:.25rem .55rem; font-size:.75rem; font-weight:500; }
+  .row { display:flex; gap:.8rem; align-items:center; flex-wrap:wrap; }
   .stage { font-size:.85rem; color:#7fd0ff; }
   .progress { margin:1rem 0 .4rem; }
   .progress .track { height:10px; background:#222; border-radius:99px; overflow:hidden; }
@@ -28,92 +38,112 @@
   .psteps span.on { color:#7fd0ff; border-color:#7fd0ff; }
   .psteps span.done { color:#8fe08f; border-color:#2a4a2a; }
   .psteps span.fail { color:#ff7f7f; border-color:#ff7f7f; }
-  .hint { font-size:.8rem; color:#888; margin:.45rem 0 0; }
+  .hint { font-size:.8rem; color:#888; margin:.4rem 0 0; line-height:1.45; }
   .error { color:#ff7f7f; font-size:.85rem; white-space:pre-wrap; }
-  .variants { display:flex; gap:1.5rem; flex-wrap:wrap; }
-  .variant { flex:1; min-width:320px; background:#101013; border:1px solid #2a2a30; border-radius:10px; padding:1rem; }
+  .variants { display:flex; gap:1.2rem; flex-wrap:wrap; }
+  .variant { flex:1; min-width:300px; background:#101013; border:1px solid #2a2a30; border-radius:10px; padding:1rem; }
   .variant.recommended { border-color:#7fd0ff; }
-  .variant video { width:100%; max-height:480px; border-radius:8px; background:#000; }
-  .variant h3 { margin:.6rem 0 .3rem; }
+  .variant.working { border-color:#8fe08f; }
+  .variant video { width:100%; max-height:420px; border-radius:8px; background:#000; }
+  .variant h3 { margin:.55rem 0 .25rem; }
   .variant p { font-size:.85rem; color:#999; }
-  .badge { font-size:.7rem; background:#7fd0ff; color:#000; border-radius:4px; padding:2px 6px; margin-left:.5rem; }
-  textarea { width:100%; background:#0d0d0f; color:#eee; border:1px solid #333; border-radius:8px; padding:.6rem; min-height:70px; margin:.8rem 0; }
-  input[type=text], select { width:100%; background:#0d0d0f; color:#eee; border:1px solid #333; border-radius:8px; padding:.6rem; }
-  label.field { display:block; font-size:.78rem; color:#888; margin:0.9rem 0 0.35rem; }
-  .chips { display:flex; flex-wrap:wrap; gap:.4rem; margin:.2rem 0 .6rem; }
+  .badge { font-size:.7rem; background:#7fd0ff; color:#000; border-radius:4px; padding:2px 6px; margin-left:.4rem; }
+  textarea, input[type=text], input[type=number], select { width:100%; background:#0d0d0f; color:#eee; border:1px solid #333; border-radius:8px; padding:.55rem .65rem; }
+  textarea { min-height:64px; margin:.5rem 0; }
+  label.field { display:block; font-size:.78rem; color:#888; margin:0.85rem 0 0.3rem; }
+  .chips { display:flex; flex-wrap:wrap; gap:.4rem; margin:.2rem 0 .5rem; }
   .chip { background:#1c1c22; color:#ccc; border:1px solid #333; border-radius:999px; padding:.35rem .85rem; font-size:.8rem; cursor:pointer; }
   .chip.on { background:#fff; color:#000; border-color:#fff; font-weight:600; }
   ul.jobs { list-style:none; font-size:.85rem; }
   ul.jobs li { padding:.35rem 0; border-bottom:1px solid #222; cursor:pointer; color:#aaa; }
   ul.jobs li:hover { color:#fff; }
-  .card { min-width:150px; }
-  .card b { display:block; font-size:1.4rem; font-weight:600; }
-  .card span { font-size:.75rem; color:#888; letter-spacing:.05em; }
-  .bar { display:flex; gap:2px; height:8px; margin:1rem 0 .6rem; }
-  .bar u { display:block; height:100%; background:#7fd0ff; border-radius:2px; transition:width .4s; }
-  .learn-rules { font-size:.82rem; color:#999; margin-top:.8rem; }
-  .learn-rules div { padding:.25rem 0; border-bottom:1px solid #1e1e22; }
-  .pref { display:flex; gap:.5rem; }
-  .pref b { color:#8fe08f; font-weight:600; }
-  .pref s { color:#e08f8f; opacity:.7; }
+  .card { min-width:140px; }
+  .card b { display:block; font-size:1.35rem; font-weight:600; }
+  .card span { font-size:.75rem; color:#888; }
+  details { margin-top:.8rem; }
+  details summary { cursor:pointer; color:#888; font-size:.8rem; }
+  .consent { display:flex; gap:.7rem; align-items:flex-start; margin:1rem 0; padding:1rem; border:1px solid #3a4a3a; background:#121812; border-radius:10px; font-size:.84rem; color:#c8d4c8; line-height:1.5; }
+  .consent input { width:auto; margin-top:.2rem; flex:none; }
+  table.tl { width:100%; border-collapse:collapse; font-size:.8rem; margin:.6rem 0 1rem; }
+  table.tl th { text-align:left; color:#666; font-weight:500; padding:.35rem .4rem; border-bottom:1px solid #2a2a30; }
+  table.tl td { padding:.3rem .35rem; border-bottom:1px solid #1e1e22; vertical-align:middle; }
+  table.tl input { padding:.3rem .4rem; border-radius:6px; }
+  table.tl input.sec { width:4.6rem; }
+  .word { display:inline-block; margin:0 .12rem .22rem 0; padding:.12rem .38rem; border-radius:6px; background:#1c1c22; color:#ddd; font-size:.8rem; cursor:pointer; border:1px solid #333; }
+  .word.off { background:#2a1515; color:#866; text-decoration:line-through; }
 </style>
 </head>
 <body>
-  <h1>X L O G</h1>
-  <div class="sub">주 3회 이상 숏폼을 만드는 크리에이터를 위한 도구 — 채널이 쇼츠를 뽑는 이유와 같은 장면을 잘라야 의미가 있습니다. 브리프를 채우고 A/B 중 고르면, xlog가 그 기준을 배웁니다.</div>
+  <div class="top">
+    <h1>XLOG</h1>
+    <div class="lang">
+      <button type="button" class="ghost tiny" id="lang-en" onclick="setLang('en')">EN</button>
+      <button type="button" class="ghost tiny" id="lang-ko" onclick="setLang('ko')">한국어</button>
+    </div>
+  </div>
+  <details class="what">
+    <summary data-i18n="what_summary">What is xlog?</summary>
+    <p data-i18n="what_body">xlog helps you lock a rough cut faster. Drop in footage and it indexes scenes, dialogue, action, and emotion — then hands you a stringout of usable beats, the selects that match your brief, and alt takes beside the hero. Source timecode stays put. Nothing is deleted. Keep, dump, or open the handles, then send it to Premiere. It will not finish the film for you.</p>
+  </details>
+  <div class="path">
+    <span class="now" data-i18n="path1">1. Index + candidates</span>
+    <span data-i18n="path2">2. You decide (non-destructive)</span>
+    <span data-i18n="path3">3. Premiere markers / FCPXML</span>
+  </div>
 
   <section>
-    <h2>1. 원본 영상 (파일 또는 YouTube URL, 합쳐서 1~3개)</h2>
-    <div class="row">
-      <input type="file" id="files" accept="video/*" multiple>
-    </div>
-    <div class="hint" id="file-hint">로컬 원본은 용량이 크면 업로드부터 시간이 걸립니다. 아래에서 진행률이 보입니다.</div>
+    <h2 data-i18n="sec_upload">Footage → index</h2>
+    <div class="row"><input type="file" id="files" accept="video/*" multiple></div>
+    <div class="hint" id="file-hint" data-i18n="file_hint">A first pass before Premiere or CapCut. 1–3 files or YouTube URLs.</div>
     <label class="field" style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
       <input type="checkbox" id="source-edited" style="width:auto;margin:0">
-      원본이 이미 편집된 롱폼입니다 (자막이 화면에 박혀 있음)
+      <span data-i18n="source_edited">Burned-in captions already on the footage</span>
     </label>
-    <div class="hint">켜면 아래쪽 자막 띠를 잘라내고 화면을 다시 잡습니다. 옛 자막이 쇼츠에 겹쳐 나오지 않고, AI도 박힌 글자 대신 장면만 읽습니다.</div>
-      <input type="text" id="yt-urls" placeholder="YouTube 영상 URL (롱폼도 가능). 여러 개는 줄바꿈 또는 쉼표" style="width:100%;background:#0d0d0f;color:#eee;border:1px solid #333;border-radius:8px;padding:.6rem;margin:.8rem 0">
+    <input type="text" id="yt-urls" data-i18n-placeholder="yt_ph" placeholder="YouTube URL (one per line)" style="margin:.75rem 0">
 
-    <label class="field">채널 — 이 쇼츠를 왜 올리는 채널인가요?</label>
+    <label class="field" data-i18n="why_label">What's the hook? (required)</label>
+    <input type="text" id="brief-why" data-i18n-placeholder="why_ph" placeholder="e.g. garlic chicken saved dinner / clutch 3-kill">
+
+    <label class="field" data-i18n="must_label">Must-include beat</label>
+    <textarea id="brief-must" style="min-height:48px" data-i18n-placeholder="must_ph" placeholder="12:30 cake / the fall"></textarea>
+
+    <label class="field" data-i18n="channel_label">Channel</label>
     <div class="chips" id="channel-chips"></div>
 
-    <label class="field">왜 이 쇼츠를 뽑나요? (필수) 예: 오늘 첫 걸음 / 이번 판 클러치 3킬</label>
-    <input type="text" id="brief-why" placeholder="시청자가 이 쇼츠를 눌러야 하는 한 줄">
+    <details>
+      <summary data-i18n="advanced">Advanced — hunt, skip, captions, voice, auto flags</summary>
+      <label class="field" data-i18n="hunt_label">What to hunt</label>
+      <textarea id="brief-hunt" style="min-height:48px"></textarea>
+      <label class="field" data-i18n="emphasize_label">How to punch it</label>
+      <textarea id="brief-emphasize" style="min-height:44px" data-i18n-placeholder="emphasize_ph" placeholder="Zoom, flash…"></textarea>
+      <label class="field" data-i18n="skip_label">Leave out</label>
+      <input type="text" id="brief-skip">
+      <label class="field" data-i18n="notes_label">Notes</label>
+      <textarea id="instruction" data-i18n-placeholder="notes_ph" placeholder="Captions in casual voice, hook on the result"></textarea>
+      <label class="field" data-i18n="quality_label">Quality</label>
+      <div class="chips" id="quality-chips"></div>
+      <div class="hint" id="quality-hint"></div>
+      <label class="field" data-i18n="voice_label">Voice</label>
+      <div class="chips" id="voice-chips"></div>
+      <label class="field" data-i18n="font_label">Caption font</label>
+      <div class="chips" id="font-chips"></div>
+      <label class="field" data-i18n="editor_label">Auto-flag</label>
+      <div class="chips" id="editor-chips"></div>
+    </details>
 
-    <label class="field">어떤 장면을 넣나요?</label>
-    <textarea id="brief-hunt" style="min-height:52px" placeholder="채널을 고르면 기본값이 채워집니다. 이 영상에서 꼭 넣을 장면을 고치세요."></textarea>
+    <label class="consent">
+      <input type="checkbox" id="consent">
+      <span data-i18n="consent">I agree xlog can save which clips I keep or dump, handle changes, reorder, and my notes, to rank selects better. Source files are not uploaded for training. Required to start.</span>
+    </label>
 
-    <label class="field">그 장면을 어떻게 강조하나요?</label>
-    <textarea id="brief-emphasize" style="min-height:52px" placeholder="줌, 플래시, 자막 톤…"></textarea>
-
-    <label class="field">넣지 말 것</label>
-    <input type="text" id="brief-skip" placeholder="로딩, 이동, 설명, 반복 풍경…">
-
-    <label class="field">메인으로 가져갈 부분 — 여기 적은 장면이 훅 또는 페이오프가 됩니다</label>
-    <textarea id="brief-must" style="min-height:52px" placeholder="예: 12:30~14:00 케이크 자르는 부분을 메인으로 / 강아지가 계단에서 넘어지는 장면을 강조"></textarea>
-    <div class="hint">시간(12:30, 3분 20초)을 적으면 그 구간을 정밀 재분석해서 무조건 넣습니다. 장면을 말로 적으면 설명이 일치하는 컷을 찾아 메인으로 올립니다.</div>
-
-    <label class="field">품질</label>
-    <div class="chips" id="quality-chips"></div>
-    <div class="hint" id="quality-hint">기본은 빠르고 저렴합니다. 프로는 분석 고화질 + Claude 편집안(키 있을 때) + 조금 더 깨끗한 인코딩입니다. 나중에 구독으로 잠깁니다.</div>
-
-    <label class="field">TTS 목소리 — 없음을 고르면 원본 소리만 씁니다. 목소리를 고르면 장면마다 속도·피치가 바뀝니다</label>
-    <div class="chips" id="voice-chips"></div>
-
-    <label class="field">자막 글꼴</label>
-    <div class="chips" id="font-chips"></div>
-
-    <label class="field">기타 요청 (선택)</label>
-    <textarea id="instruction" placeholder="예: 자막은 반말, 훅은 결과부터"></textarea>
     <div class="row">
-      <button id="start" onclick="startJob()">숏츠 제작 시작</button>
+      <button id="start" onclick="startJob()" data-i18n="start">Index footage</button>
     </div>
     <div id="upload-msg" class="error"></div>
   </section>
 
   <section id="job-section" style="display:none">
-    <h2>2. 진행 상황 — <span id="job-id"></span></h2>
+    <h2><span data-i18n="job">Job —</span> <span id="job-id"></span></h2>
     <div class="progress">
       <div class="meta">
         <span id="job-stage" class="stage"></span>
@@ -124,60 +154,364 @@
       <div class="psteps" id="job-steps"></div>
     </div>
     <div class="error" id="job-error"></div>
+    <div id="index-box" style="display:none;margin-top:.4rem">
+      <h2 data-i18n="index_title">Index — source timecode kept, nothing deleted</h2>
+      <div class="hint" id="index-hint"></div>
+      <div class="row" style="margin:.6rem 0">
+        <a class="ghost" id="xml-link" href="#" style="display:inline-block;padding:.45rem .9rem;border:1px solid #444;border-radius:8px;color:#ccc;text-decoration:none">Premiere FCPXML</a>
+        <a class="ghost" id="csv-link" href="#" style="display:inline-block;padding:.45rem .9rem;border:1px solid #444;border-radius:8px;color:#ccc;text-decoration:none" data-i18n="csv">Marker CSV</a>
+      </div>
+      <table class="tl" id="index-table"></table>
+      <textarea id="index-comment" data-i18n-placeholder="index_comment_ph" placeholder="Why you kept or dumped it."></textarea>
+      <div class="row">
+        <button onclick="saveIndex()" data-i18n="save_index">Save decisions (source stays put)</button>
+      </div>
+      <div class="stage" id="index-msg"></div>
+    </div>
     <div class="variants" id="variants"></div>
     <div id="evaluate-box" style="display:none">
-      <h2 style="margin-top:1.5rem">3. 어느 편집이 더 좋습니까? (당신의 선택이 기준이 됩니다)</h2>
-      <textarea id="comment" placeholder="이유를 적어주세요 (선택). 예: A는 훅이 약하지만 후반 몰입이 좋다…"></textarea>
+      <h2 style="margin-top:1.1rem" data-i18n="eval_title">Which is the better starting point?</h2>
+      <div class="hint" data-i18n="eval_hint">Not a finished short. Pick the one that's easier to take into Premiere or CapCut.</div>
+      <textarea id="comment" data-i18n-placeholder="comment_ph" placeholder="Why this starting point. e.g. A lands the hook first, so it's easier to work from."></textarea>
       <div class="row" id="choice-buttons"></div>
       <div id="eval-msg" class="stage"></div>
     </div>
-  </section>
-
-  <section>
-    <h2>레퍼런스 학습 — 좋아하는 숏츠의 편집을 xlog에게 가르치기</h2>
-    <div class="row">
-      <input type="url" id="ref-url" placeholder="YouTube Shorts 링크" style="flex:1;background:#0d0d0f;color:#eee;border:1px solid #333;border-radius:8px;padding:.6rem">
-      <button class="ghost" id="ref-btn" onclick="learnReference()">이 스타일 학습</button>
+    <div id="timeline-box" style="display:none;margin-top:1.2rem">
+      <h2 data-i18n="tl_title">Timeline</h2>
+      <table class="tl" id="tl-table"></table>
+      <div class="row">
+        <button class="ghost tiny" onclick="addShot()" data-i18n="add_shot">Add cut</button>
+      </div>
+      <h2 style="margin-top:1.1rem" data-i18n="transcript_title">Transcript cuts</h2>
+      <div class="hint" id="tighten-hint"></div>
+      <div id="transcript-words" style="margin:.5rem 0 1rem;line-height:1.85"></div>
+      <button class="ghost" id="recut-btn" onclick="recutFromTranscript()" data-i18n="recut">Recut from dropped words</button>
+      <div class="row" style="margin-top:1rem">
+        <button onclick="saveTimeline(false)" data-i18n="save_tl">Save this timeline</button>
+        <button class="ghost" onclick="saveTimeline(true)" data-i18n="save_preview">Save and preview again</button>
+        <a class="ghost" id="export-link" href="#" style="display:inline-block;padding:.55rem 1rem;border:1px solid #444;border-radius:8px;color:#ccc;text-decoration:none" data-i18n="export_json">Export JSON</a>
+      </div>
+      <div class="stage" id="tl-msg"></div>
     </div>
-    <textarea id="ref-notes" placeholder="이 영상의 어떤 점이 좋은가요? (선택) 예: 자막 타이밍이랑 훅 만드는 방식"></textarea>
-    <div id="ref-msg" class="stage"></div>
-    <ul class="jobs" id="ref-list"></ul>
   </section>
 
   <section>
-    <h2>학습 상태 — 내 선택이 xlog를 어떻게 바꾸고 있나</h2>
-    <div class="row" style="gap:2rem" id="learn-cards"></div>
-    <div class="bar" id="learn-bar"></div>
-    <div class="stage" id="learn-progress"></div>
-    <div id="learn-rules" class="learn-rules"></div>
-    <div id="learn-samples" class="learn-rules"></div>
+    <h2 data-i18n="traces_title">Your decisions</h2>
+    <div class="row" style="gap:2rem" id="trace-cards"></div>
+    <div class="hint" id="trace-goal" style="margin:.8rem 0"></div>
+    <ul class="jobs" id="trace-list"></ul>
   </section>
 
   <section>
-    <h2>지난 작업</h2>
+    <h2 data-i18n="jobs_title">Recent jobs</h2>
     <ul class="jobs" id="job-list"></ul>
   </section>
 
 <script>
+const I18N = {
+  en: {
+    title: "xlog — lock a rough cut faster",
+    what_summary: "What is xlog?",
+    what_body: "xlog helps you lock a rough cut faster. Drop in footage and it indexes scenes, dialogue, action, and emotion — then hands you a stringout of usable beats, the selects that match your brief, and alt takes beside the hero. Source timecode stays put. Nothing is deleted. Keep, dump, or open the handles, then send it to Premiere. It will not finish the film for you.",
+    path1: "1. Index + candidates",
+    path2: "2. You decide (non-destructive)",
+    path3: "3. Premiere markers / FCPXML",
+    sec_upload: "Footage → index",
+    file_hint: "A first pass before Premiere or CapCut. 1–3 files or YouTube URLs.",
+    source_edited: "Burned-in captions already on the footage",
+    yt_ph: "YouTube URL (one per line)",
+    why_label: "What's the hook? (required)",
+    why_ph: "e.g. garlic chicken saved dinner / clutch 3-kill",
+    must_label: "Must-include beat",
+    must_ph: "12:30 cake / the fall",
+    channel_label: "Channel",
+    advanced: "Advanced — hunt, skip, captions, voice, auto flags",
+    hunt_label: "What to hunt",
+    emphasize_label: "How to punch it",
+    emphasize_ph: "Zoom, flash…",
+    skip_label: "Leave out",
+    notes_label: "Notes",
+    notes_ph: "Captions in casual voice, hook on the result",
+    quality_label: "Quality",
+    voice_label: "Voice",
+    font_label: "Caption font",
+    editor_label: "Auto-flag",
+    consent: "I agree xlog can save which clips I keep or dump, handle changes, reorder, and my notes, to rank selects better. Source files are not uploaded for training. Required to start.",
+    start: "Index footage",
+    job: "Job —",
+    index_title: "Index — source timecode kept, nothing deleted",
+    csv: "Marker CSV",
+    index_comment_ph: "Why you kept or dumped it.",
+    save_index: "Save decisions (source stays put)",
+    eval_title: "Which is the better starting point?",
+    eval_hint: "Not a finished short. Pick the one that's easier to take into Premiere or CapCut.",
+    comment_ph: "Why this starting point. e.g. A lands the hook first, so it's easier to work from.",
+    tl_title: "Timeline",
+    add_shot: "Add cut",
+    transcript_title: "Transcript cuts",
+    recut: "Recut from dropped words",
+    save_tl: "Save this timeline",
+    save_preview: "Save and preview again",
+    export_json: "Export JSON",
+    traces_title: "Your decisions",
+    jobs_title: "Recent jobs",
+    need_consent: "Check the box to start.",
+    need_files: "Use 1–3 files and URLs combined.",
+    need_why: "A one-line hook is required. That's what the first cut is aiming at.",
+    uploading: "Uploading",
+    creating: "Creating job",
+    failed: "Failed",
+    network: "Network error",
+    index_hint: "stringout {so} · selects {sel} · similar takes grouped. dead / boring / duplicate / mistake are flags only — nothing is deleted from source.",
+    tags: "tags", flags: "flags", group: "group", desc: "description", call: "call",
+    keep: "Keep", dump: "Dump", maybe: "Maybe",
+    saving: "Saving…",
+    saved_index: "Saved · {n} clips. Source files are untouched.",
+    error: "Error",
+    ai_start: "Better start (AI)",
+    working: "Working",
+    start_point: "Start {label}",
+    shots_n: "{n} cuts · {sec}s",
+    use_start: "Use {label} as the start",
+    role: "role", caption: "caption",
+    remove: "Delete",
+    no_transcript: "No transcript on this job. Silence-only pass may have run.",
+    tighten: "Silence {sec}s flagged · {n} fillers. Click a word to drop it from the cut.",
+    no_drops: "No words dropped.",
+    recutting: "Recutting…",
+    saving_start: "Saving start…",
+    saved_start: "Start {choice}. Tweak the timeline below if you want.",
+    saving_preview: "Saving and previewing…",
+    redrawing: "Redrawing. Preview updates in a moment.",
+    saved_tl: "Timeline saved · {n} cuts.",
+    start_of: " · start {label}",
+    traces_saved: "Saved records",
+    traces_picks: "Start picks",
+    traces_edits: "Human timeline edits",
+    actions_n: "actions",
+    pipe_upload: "Upload",
+    pipe_source: "Source",
+    pipe_index: "Index",
+    pipe_pick: "Your call",
+    st_uploading: "Uploading",
+    st_queued: "Queued",
+    st_ingesting: "Checking source",
+    st_analyzing: "Indexing scenes, lines, action",
+    st_writing: "Indexing",
+    st_rendering: "Preview",
+    st_judging: "Comparing",
+    st_await: "Pick candidates",
+    st_done: "Saved",
+    st_failed: "Failed",
+    ed_silence: "Silence / filler",
+    ed_theme: "Caption palette",
+    ed_sfx: "SFX ducking",
+    ed_zoom: "Face zoom",
+    ed_stickers: "Stickers",
+    ed_qa: "Safe zone",
+    q_fast: "Standard",
+    q_pro: "Pro",
+    qh_fast: "Faster and cheaper. GPT Terra reads frames; Grok searches X.",
+    qh_pro: "Same editor, cleaner encode. Costs more per job.",
+    v_off: "Off (source audio)",
+    v_auto: "Auto (varies by shot)",
+    v_sunhi: "SunHi · bright female",
+    v_yujin: "YuJin · clear female",
+    v_jimin: "JiMin · soft female",
+    v_seohyeon: "SeoHyeon · calm female",
+    v_injoon: "InJoon · strong male",
+    v_hyunsu: "Hyunsu · low male",
+    v_bongjin: "BongJin · baritone",
+  },
+  ko: {
+    title: "xlog — 러프컷을 빨리 고르게",
+    what_summary: "xlog가 뭔가요?",
+    what_body: "xlog는 러프컷을 더 빨리 고르게 해 줍니다. 원본을 넣으면 장면·대사·행동·감정으로 인덱싱하고, 쓸 만한 장면 stringout, 브리프에 맞는 selects, 좋은 take 옆에 대안을 붙입니다. 원본 타임코드는 그대로이고 아무것도 지우지 않습니다. 살리고 버리고 핸들을 연 다음 프리미어로 넘기면 됩니다. 완성본을 대신 만들어 주지는 않습니다.",
+    path1: "1. 인덱싱 + 후보",
+    path2: "2. 편집자 결정 (비파괴)",
+    path3: "3. Premiere markers / FCPXML",
+    sec_upload: "원본 → 인덱스",
+    file_hint: "프리미어·캡컷에 넘기기 전 1차 컷. 파일 1–3개 또는 유튜브 URL.",
+    source_edited: "원본에 자막이 이미 박혀 있음",
+    yt_ph: "YouTube URL (여러 개는 줄바꿈)",
+    why_label: "이 영상의 훅은 뭔가? (필수)",
+    why_ph: "예: 마늘 통닭으로 입맛 회복 / 클러치 3킬",
+    must_label: "꼭 넣을 장면",
+    must_ph: "12:30 케이크 / 넘어지는 장면",
+    channel_label: "채널",
+    advanced: "고급 — 찾을 장면, 빼야 할 것, 자막·보이스·자동 컷",
+    hunt_label: "어떤 장면을 찾나",
+    emphasize_label: "어떻게 강조",
+    emphasize_ph: "줌, 플래시…",
+    skip_label: "넣지 말 것",
+    notes_label: "기타",
+    notes_ph: "자막은 반말, 훅은 결과부터",
+    quality_label: "품질",
+    voice_label: "보이스",
+    font_label: "자막 글꼴",
+    editor_label: "자동으로 덜어낼 것",
+    consent: "인덱스를 쓰면서 내가 살린/버린 클립, 늘린 핸들, 바꾼 순서와 이유를 xlog가 저장해 selects 순위를 개선하는 데 쓰는 것에 동의합니다. 원본 영상 파일은 학습용으로 올리지 않습니다. 동의 없이는 시작할 수 없습니다.",
+    start: "푸티지 인덱싱",
+    job: "작업 —",
+    index_title: "인덱스 — 원본 타임코드 유지, 삭제는 없음",
+    csv: "마커 CSV",
+    index_comment_ph: "왜 살렸거나 버렸는지.",
+    save_index: "결정 저장 (원본은 그대로)",
+    eval_title: "어느 쪽이 더 나은 시작점인가",
+    eval_hint: "완성본이 아닙니다. 프리미어/캡컷에서 손대기 쉬운 쪽을 고르세요.",
+    comment_ph: "왜 이 시작점인지. 예: A는 훅이 먼저 나와서 손대기 좋다",
+    tl_title: "타임라인",
+    add_shot: "컷 추가",
+    transcript_title: "대본 컷",
+    recut: "지운 말로 다시 컷",
+    save_tl: "이 타임라인 저장",
+    save_preview: "저장하고 미리보기 다시",
+    export_json: "JSON 내보내기",
+    traces_title: "당신의 결정",
+    jobs_title: "지난 작업",
+    need_consent: "동의에 체크해야 시작할 수 있습니다.",
+    need_files: "파일과 URL을 합쳐 1–3개.",
+    need_why: "훅 한 줄은 필수입니다. 그게 시작 컷의 기준입니다.",
+    uploading: "업로드 중",
+    creating: "작업 생성",
+    failed: "실패",
+    network: "네트워크 오류",
+    index_hint: "stringout {so} · selects {sel} · 비슷한 take는 그룹. dead/boring/duplicate/mistake는 표시만 — 원본에서 지우지 않습니다.",
+    tags: "태그", flags: "플래그", group: "그룹", desc: "설명", call: "결정",
+    keep: "살림", dump: "버림", maybe: "보류",
+    saving: "저장 중…",
+    saved_index: "저장됨 · {n}개 클립. 원본 파일은 그대로입니다.",
+    error: "오류",
+    ai_start: "AI가 나은 시작점",
+    working: "작업 중",
+    start_point: "시작점 {label}",
+    shots_n: "{n}컷 · {sec}초",
+    use_start: "시작점으로 {label} 쓰기",
+    role: "역할", caption: "자막",
+    remove: "삭제",
+    no_transcript: "이 작업에는 대본이 없습니다. 무음 컷만 돌렸을 수 있습니다.",
+    tighten: "무음 {sec}초 표시 · 추임새 {n}개. 단어를 누르면 컷에서 빠집니다.",
+    no_drops: "지운 단어가 없습니다.",
+    recutting: "다시 컷하는 중…",
+    saving_start: "시작점 저장 중…",
+    saved_start: "시작점 {choice}. 아래 타임라인을 고치면 됩니다.",
+    saving_preview: "저장하고 미리보기…",
+    redrawing: "다시 그리는 중. 잠시 뒤 미리보기가 바뀝니다.",
+    saved_tl: "타임라인 저장됨 · {n}컷.",
+    start_of: " · 시작점 {label}",
+    traces_saved: "저장된 기록",
+    traces_picks: "시작점 선택",
+    traces_edits: "인간이 고친 타임라인",
+    actions_n: "액션",
+    pipe_upload: "업로드",
+    pipe_source: "원본",
+    pipe_index: "인덱싱",
+    pipe_pick: "편집자가 고름",
+    st_uploading: "업로드 중",
+    st_queued: "대기",
+    st_ingesting: "원본 검사",
+    st_analyzing: "장면·대사·행동 인덱싱",
+    st_writing: "인덱싱",
+    st_rendering: "미리보기",
+    st_judging: "비교",
+    st_await: "후보 고르기",
+    st_done: "저장됨",
+    st_failed: "실패",
+    ed_silence: "무음·추임새",
+    ed_theme: "자막 색 통일",
+    ed_sfx: "SFX 덕킹",
+    ed_zoom: "얼굴 줌",
+    ed_stickers: "스티커",
+    ed_qa: "세이프존",
+    q_fast: "기본",
+    q_pro: "프로",
+    qh_fast: "빠르고 저렴. GPT Terra가 프레임을 읽고, Grok이 X를 검색합니다.",
+    qh_pro: "같은 편집안, 더 깨끗한 인코딩. 편당 비용이 올라갑니다.",
+    v_off: "없음 (원본 소리만)",
+    v_auto: "자동 (장면마다 바뀜)",
+    v_sunhi: "선히 · 밝은 여성",
+    v_yujin: "유진 · 또렷한 여성",
+    v_jimin: "지민 · 부드러운 여성",
+    v_seohyeon: "서현 · 차분한 여성",
+    v_injoon: "인준 · 힘있는 남성",
+    v_hyunsu: "현수 · 낮은 남성",
+    v_bongjin: "봉진 · 중저음 남성",
+  },
+};
+
+let lang = localStorage.getItem("xlog_lang") === "ko" ? "ko" : "en";
+function tx(key, vars) {
+  let s = (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
+  if (vars) for (const k of Object.keys(vars)) s = s.replaceAll("{" + k + "}", vars[k]);
+  return s;
+}
+function setLang(next) {
+  lang = next === "ko" ? "ko" : "en";
+  localStorage.setItem("xlog_lang", lang);
+  applyI18n();
+}
+function applyI18n() {
+  document.documentElement.lang = lang === "ko" ? "ko" : "en";
+  document.title = tx("title");
+  document.getElementById("lang-en").classList.toggle("on", lang === "en");
+  document.getElementById("lang-ko").classList.toggle("on", lang === "ko");
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = tx(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    el.placeholder = tx(el.dataset.i18nPlaceholder);
+  });
+  const files = document.getElementById("files").files;
+  if (files.length) document.getElementById("file-hint").textContent = describeFiles(files);
+  loadBriefPresets();
+  loadStylePresets();
+  loadEditorChips();
+  if (selectedChannel) pickChannel(selectedChannel);
+  if (lastJob) {
+    renderProgress(lastJob.stage, (lastJob.progress || {}).pct,
+      (lastJob.progress && lastJob.progress.detail) || "", lastJob.progress && lastJob.progress.started_at || lastJob.created_at);
+    renderIndex(lastJob);
+    renderVariants(lastJob);
+    renderTranscript(lastJob);
+    if (lastJob.user_choice && lastJob.variants) drawTimeline();
+  }
+  loadJobList();
+  loadTraces();
+}
+
 let currentJob = null, pollTimer = null, briefPresets = [], selectedChannel = "";
-let selectedVoice = "auto", selectedFont = "malgun", selectedQuality = "fast";
+let selectedVoice = "off", selectedFont = "malgun", selectedQuality = "fast";
+let editorFlags = {silence:true, theme:true, sfx:true, zoom:true, stickers:false, qa:true};
+let workingShots = [];
+let editActions = [];
+let indexActions = [];
+let lastJob = null;
+let lastStyle = null;
 let uploadStartedAt = 0;
 
-const PIPELINE = [
-  {id:"uploading", label:"파일 업로드"},
-  {id:"ingesting", label:"원본 검증"},
-  {id:"analyzing", label:"장면 분석"},
-  {id:"writing_plans", label:"편집안"},
-  {id:"rendering", label:"렌더링"},
-  {id:"judging", label:"AI 심사"},
-  {id:"awaiting_evaluation", label:"평가"},
-];
-
-const STAGE_LABELS = {
-  uploading:"파일 업로드 중", queued:"대기 중", ingesting:"원본 검증 중",
-  analyzing:"장면 분석 중", writing_plans:"편집안 A/B 작성 중", rendering:"렌더링 중",
-  judging:"AI 심사 중", awaiting_evaluation:"평가 대기", done:"완료", failed:"실패",
-};
+function editorChips() {
+  return [
+    {id:"silence", label: tx("ed_silence")},
+    {id:"theme", label: tx("ed_theme")},
+    {id:"sfx", label: tx("ed_sfx")},
+    {id:"zoom", label: tx("ed_zoom")},
+    {id:"stickers", label: tx("ed_stickers")},
+    {id:"qa", label: tx("ed_qa")},
+  ];
+}
+function pipeline() {
+  return [
+    {id:"uploading", label: tx("pipe_upload")},
+    {id:"ingesting", label: tx("pipe_source")},
+    {id:"analyzing", label: tx("pipe_index")},
+    {id:"awaiting_evaluation", label: tx("pipe_pick")},
+  ];
+}
+function stageLabels() {
+  return {
+    uploading: tx("st_uploading"), queued: tx("st_queued"), ingesting: tx("st_ingesting"),
+    analyzing: tx("st_analyzing"), writing_plans: tx("st_writing"), rendering: tx("st_rendering"),
+    judging: tx("st_judging"), awaiting_evaluation: tx("st_await"), done: tx("st_done"), failed: tx("st_failed"),
+  };
+}
 
 function fmtBytes(n) {
   if (n >= 1e9) return (n / 1e9).toFixed(2) + "GB";
@@ -188,22 +522,23 @@ function fmtBytes(n) {
 function fmtElapsed(sec) {
   sec = Math.max(0, Math.floor(sec));
   const m = Math.floor(sec / 60), s = sec % 60;
-  return m ? `${m}분 ${s}초` : `${s}초`;
+  return lang === "ko" ? (m ? `${m}분 ${s}초` : `${s}초`) : (m ? `${m}m ${s}s` : `${s}s`);
 }
 function showJobPanel(id) {
   document.getElementById("job-section").style.display = "";
-  document.getElementById("job-id").textContent = id || "업로드 중";
+  document.getElementById("job-id").textContent = id || tx("uploading");
 }
 function renderProgress(stage, pct, detail, startedAt) {
   const p = Math.max(0, Math.min(100, Math.round(pct || 0)));
   document.getElementById("job-fill").style.width = p + "%";
   document.getElementById("job-pct").textContent = p + "%";
-  const elapsed = startedAt ? " · 경과 " + fmtElapsed((Date.now() / 1000) - startedAt) : "";
-  document.getElementById("job-stage").textContent = (STAGE_LABELS[stage] || stage) + elapsed;
+  const elapsed = startedAt ? " · " + fmtElapsed((Date.now() / 1000) - startedAt) : "";
+  document.getElementById("job-stage").textContent = (stageLabels()[stage] || stage) + elapsed;
   document.getElementById("job-detail").textContent = detail || "";
-  const order = PIPELINE.map(s => s.id);
+  const steps = pipeline();
+  const order = steps.map(s => s.id);
   const cur = stage === "done" ? order.length : order.indexOf(stage);
-  document.getElementById("job-steps").innerHTML = PIPELINE.map((s, i) => {
+  document.getElementById("job-steps").innerHTML = steps.map((s, i) => {
     let cls = "";
     if (stage === "failed" && i === Math.max(cur, 0)) cls = "fail";
     else if (stage === "done" || (cur >= 0 && i < cur)) cls = "done";
@@ -211,19 +546,14 @@ function renderProgress(stage, pct, detail, startedAt) {
     return `<span class="${cls}">${i + 1}. ${s.label}</span>`;
   }).join("");
 }
-
 function describeFiles(fileList) {
   const files = [...fileList];
   if (!files.length) return "";
-  const lines = files.map(f => `${f.name} (${fmtBytes(f.size)})`);
-  const big = files.some(f => f.size > 400e6);
-  return lines.join(" · ") + (big ? " — 대용량이라 업로드 진행률이 먼저 표시됩니다." : "");
+  return files.map(f => `${f.name} (${fmtBytes(f.size)})`).join(" · ");
 }
-
 document.getElementById("files").addEventListener("change", () => {
   document.getElementById("file-hint").textContent =
-    describeFiles(document.getElementById("files").files)
-    || "로컬 원본은 용량이 크면 업로드부터 시간이 걸립니다. 아래에서 진행률이 보입니다.";
+    describeFiles(document.getElementById("files").files) || tx("file_hint");
 });
 
 async function startJob() {
@@ -232,20 +562,25 @@ async function startJob() {
   const urlCount = urls ? urls.split(/[\s,]+/).filter(Boolean).length : 0;
   const msg = document.getElementById("upload-msg");
   msg.textContent = "";
+  if (!document.getElementById("consent").checked) {
+    msg.textContent = tx("need_consent");
+    return;
+  }
   const total = files.length + urlCount;
-  if (total < 1 || total > 3) { msg.textContent = "파일과 YouTube URL을 합쳐 1~3개여야 합니다."; return; }
+  if (total < 1 || total > 3) { msg.textContent = tx("need_files"); return; }
   const why = document.getElementById("brief-why").value.trim();
-  if (!why) { msg.textContent = "이 쇼츠를 왜 뽑는지 한 줄은 필수입니다. 그 한 줄이 컷의 기준입니다."; return; }
+  if (!why) { msg.textContent = tx("need_why"); return; }
   const fd = new FormData();
   for (const f of files) fd.append("files", f);
   fd.append("youtube_urls", urls);
   fd.append("font", selectedFont);
   fd.append("voice", selectedVoice);
   fd.append("quality", selectedQuality);
+  fd.append("editor", JSON.stringify(editorFlags));
+  fd.append("consent", "1");
   fd.append("source_edited", document.getElementById("source-edited").checked ? "1" : "");
   fd.append("brief", JSON.stringify({
-    channel: selectedChannel,
-    why,
+    channel: selectedChannel, why,
     hunt: document.getElementById("brief-hunt").value.trim(),
     emphasize: document.getElementById("brief-emphasize").value.trim(),
     skip: document.getElementById("brief-skip").value.trim(),
@@ -254,18 +589,14 @@ async function startJob() {
   }));
   document.getElementById("start").disabled = true;
   uploadStartedAt = Date.now() / 1000;
-  showJobPanel("업로드 중");
+  showJobPanel(tx("uploading"));
   document.getElementById("job-error").textContent = "";
   document.getElementById("evaluate-box").style.display = "none";
+  document.getElementById("timeline-box").style.display = "none";
   document.getElementById("variants").innerHTML = "";
   const hasLocal = files.length > 0;
-  renderProgress(
-    hasLocal ? "uploading" : "queued",
-    hasLocal ? 0 : 5,
-    hasLocal ? describeFiles(files) : "작업 생성 중",
-    uploadStartedAt,
-  );
-
+  renderProgress(hasLocal ? "uploading" : "queued", hasLocal ? 0 : 5,
+    hasLocal ? describeFiles(files) : tx("creating"), uploadStartedAt);
   try {
     const { job_id } = await postJob(fd, hasLocal);
     watchJob(job_id);
@@ -280,15 +611,8 @@ function postJob(fd, trackUpload) {
     if (trackUpload) {
       xhr.upload.onprogress = (e) => {
         if (!e.lengthComputable) return;
-        const pct = Math.round(90 * e.loaded / e.total);
-        renderProgress(
-          "uploading", pct,
-          `${fmtBytes(e.loaded)} / ${fmtBytes(e.total)} 전송 중`,
-          uploadStartedAt,
-        );
-      };
-      xhr.upload.onload = () => {
-        renderProgress("uploading", 95, "서버가 파일을 저장·검사하는 중", uploadStartedAt);
+        renderProgress("uploading", Math.round(90 * e.loaded / e.total),
+          `${fmtBytes(e.loaded)} / ${fmtBytes(e.total)}`, uploadStartedAt);
       };
     }
     xhr.onload = () => {
@@ -298,11 +622,11 @@ function postJob(fd, trackUpload) {
       else {
         const err = typeof data.detail === "string" ? data.detail
           : Array.isArray(data.detail) ? data.detail.map(d => d.msg || JSON.stringify(d)).join("; ")
-          : (xhr.statusText || "업로드 실패");
+          : (xhr.statusText || tx("failed"));
         reject(new Error(err));
       }
     };
-    xhr.onerror = () => reject(new Error("네트워크 오류 — 업로드가 끊겼습니다"));
+    xhr.onerror = () => reject(new Error(tx("network")));
     xhr.send(fd);
   });
 }
@@ -310,6 +634,9 @@ function postJob(fd, trackUpload) {
 function watchJob(id) {
   currentJob = id;
   showJobPanel(id);
+  document.getElementById("export-link").href = `/api/jobs/${id}/timeline.json`;
+  document.getElementById("xml-link").href = `/api/jobs/${id}/premiere.xml`;
+  document.getElementById("csv-link").href = `/api/jobs/${id}/markers.csv`;
   clearInterval(pollTimer);
   pollTimer = setInterval(refreshJob, 1000);
   refreshJob();
@@ -319,186 +646,307 @@ async function refreshJob() {
   const r = await fetch(`/api/jobs/${currentJob}`);
   if (!r.ok) return;
   const job = await r.json();
+  lastJob = job;
   const p = job.progress || {};
   const fallback = {
     queued:0, ingesting:8, analyzing:18, writing_plans:60,
     rendering:70, judging:88, awaiting_evaluation:100, done:100, failed:0,
   };
-  renderProgress(
-    job.stage,
-    p.pct ?? fallback[job.stage] ?? 0,
-    p.detail || (job.brief && job.brief.why ? job.brief.why : ""),
-    p.started_at || job.created_at,
-  );
+  renderProgress(job.stage, p.pct ?? fallback[job.stage] ?? 0,
+    p.detail || (job.brief && job.brief.why) || "", p.started_at || job.created_at);
   document.getElementById("job-error").textContent = job.error || "";
   if (["awaiting_evaluation","done","failed"].includes(job.stage)) clearInterval(pollTimer);
+  renderIndex(job);
   renderVariants(job);
+  renderTranscript(job);
+  if (job.user_choice && job.variants) loadWorkingShots(job);
   loadJobList();
+}
+
+function renderIndex(job) {
+  const box = document.getElementById("index-box");
+  const clips = (job.index && job.index.clips) || [];
+  if (!clips.length) { box.style.display = "none"; return; }
+  box.style.display = "";
+  const sel = (job.index.selects || []).length;
+  const so = (job.index.stringout || []).length;
+  document.getElementById("index-hint").textContent = tx("index_hint", {so, sel});
+  const tb = document.getElementById("index-table");
+  tb.innerHTML = `<tr><th></th><th>in</th><th>out</th><th>${tx("tags")}</th><th>${tx("flags")}</th><th>${tx("group")}</th><th>${tx("desc")}</th><th>${tx("call")}</th></tr>`
+    + clips.map((c, i) => {
+      const flags = (c.flags || []).join(" ") || "—";
+      const tags = (c.tags || []).join(" ");
+      const hero = c.hero ? " hero" : "";
+      const alt = (c.alts || []).length ? ` alt${c.alts.length}` : "";
+      return `<tr class="${c.verdict || ""}">
+        <td>${c.select ? "★" : ""}</td>
+        <td><input class="sec" type="number" step="0.1" value="${c.start_sec}" onchange="handleClip(${i},'start_sec',this.value)"></td>
+        <td><input class="sec" type="number" step="0.1" value="${c.end_sec}" onchange="handleClip(${i},'end_sec',this.value)"></td>
+        <td>${escapeHtml(tags)}</td>
+        <td>${escapeHtml(flags)}</td>
+        <td>g${c.group}${hero}${alt}</td>
+        <td>${escapeHtml((c.description || "").slice(0, 80))}<div class="hint">${c.source_in}–${c.source_out}</div></td>
+        <td>
+          <button class="ghost tiny" onclick="verdictClip(${i},'keep')">${tx("keep")}</button>
+          <button class="ghost tiny" onclick="verdictClip(${i},'discard')">${tx("dump")}</button>
+          <button class="ghost tiny" onclick="verdictClip(${i},'maybe')">${tx("maybe")}</button>
+          <b>${c.verdict || ""}</b>
+        </td>
+      </tr>`;
+    }).join("");
+  window._indexClips = clips;
+}
+
+function handleClip(i, key, val) {
+  const clips = window._indexClips || [];
+  const c = clips[i];
+  if (!c) return;
+  const n = parseFloat(val);
+  c[key] = n;
+  indexActions.push({op:"handle", id:c.id, [key]: n});
+}
+
+function verdictClip(i, v) {
+  const clips = window._indexClips || [];
+  const c = clips[i];
+  if (!c) return;
+  c.verdict = v;
+  indexActions.push({op: v, id: c.id});
+  renderIndex(lastJob);
+}
+
+async function saveIndex() {
+  const msg = document.getElementById("index-msg");
+  const fd = new FormData();
+  fd.append("actions", JSON.stringify(indexActions));
+  fd.append("comment", document.getElementById("index-comment").value);
+  msg.textContent = tx("saving");
+  try {
+    const r = await fetch(`/api/jobs/${currentJob}/index`, { method:"POST", body:fd });
+    const data = await r.json();
+    if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : tx("error"));
+    msg.textContent = tx("saved_index", {n: data.clips});
+    indexActions = [];
+    loadTraces();
+    refreshJob();
+  } catch (e) { msg.textContent = e.message; }
 }
 
 function renderVariants(job) {
   const box = document.getElementById("variants");
   box.innerHTML = "";
-  if (!job.variants || !Object.keys(job.outputs || {}).length) { document.getElementById("evaluate-box").style.display="none"; return; }
+  if (!job.variants || !Object.keys(job.outputs || {}).length) {
+    document.getElementById("evaluate-box").style.display = "none";
+    return;
+  }
   const jv = job.judge_verdict;
   const winner = jv ? jv.winner : null;
-  const secondWinner = jv && jv.second_opinion ? jv.second_opinion.winner : null;
   for (const v of job.variants) {
     const rec = winner === v.label;
-    let badge = "";
-    if (rec) {
-      if (secondWinner === null) badge = '<span class="badge">AI 추천</span>';
-      else if (jv.models_agree) badge = '<span class="badge">AI 추천 · 2모델 일치</span>';
-      else badge = '<span class="badge" style="background:#ffb27f">Grok 추천</span>';
-    } else if (secondWinner === v.label && !jv.models_agree) {
-      badge = '<span class="badge" style="background:#c9a7ff">GPT 추천</span>';
-    }
+    const work = job.user_choice === v.label;
+    let badge = rec ? `<span class="badge">${tx("ai_start")}</span>` : "";
+    if (work) badge += `<span class="badge" style="background:#9f9">${tx("working")}</span>`;
     const el = document.createElement("div");
-    el.className = "variant" + (rec ? " recommended" : "");
+    el.className = "variant" + (rec ? " recommended" : "") + (work ? " working" : "");
     el.innerHTML = `
       <video controls src="/api/jobs/${job.id}/video/${v.label}"></video>
-      <h3>편집 ${v.label}${badge}${job.user_choice===v.label ? '<span class="badge" style="background:#9f9">내 선택</span>' : ""}</h3>
-      <p>${v.concept} (${v.total_sec ?? "?"}초)</p>`;
+      <h3>${tx("start_point", {label: v.label})}${badge}</h3>
+      <p>${escapeHtml(v.concept || "")} · ${tx("shots_n", {n: v.shots ? v.shots.length : 0, sec: v.total_sec ?? "?"})}</p>`;
     box.appendChild(el);
   }
   const evalBox = document.getElementById("evaluate-box");
-  if (job.stage === "awaiting_evaluation") {
-    evalBox.style.display = "";
+  const ready = job.stage === "awaiting_evaluation" || job.stage === "done";
+  evalBox.style.display = ready && !job.user_choice ? "" : (ready ? "" : "none");
+  if (ready) {
     const btns = document.getElementById("choice-buttons");
     btns.innerHTML = "";
     for (const v of job.variants) {
       const b = document.createElement("button");
-      b.textContent = `편집 ${v.label} 선택`;
+      b.textContent = tx("use_start", {label: v.label});
       b.onclick = () => submitEval(v.label);
+      if (job.user_choice === v.label) b.disabled = true;
       btns.appendChild(b);
     }
-  } else evalBox.style.display = "none";
+  }
+}
+
+function loadWorkingShots(job) {
+  const v = (job.variants || []).find(x => x.label === job.user_choice);
+  if (!v) return;
+  if (!workingShots.length || lastJob && lastJob.id !== job.id) {
+    workingShots = (v.shots || []).map(s => ({...s}));
+    editActions = [];
+  }
+  document.getElementById("timeline-box").style.display = "";
+  drawTimeline();
+}
+
+function drawTimeline() {
+  const tb = document.getElementById("tl-table");
+  tb.innerHTML = `<tr><th></th><th>in</th><th>out</th><th>${tx("role")}</th><th>${tx("caption")}</th><th>fx</th></tr>`
+    + workingShots.map((s, i) => `<tr>
+      <td><button class="ghost tiny" onclick="moveShot(${i},-1)">↑</button>
+          <button class="ghost tiny" onclick="moveShot(${i},1)">↓</button>
+          <button class="ghost tiny" onclick="dropShot(${i})">${tx("remove")}</button></td>
+      <td><input class="sec" type="number" step="0.1" value="${s.start_sec ?? 0}" onchange="editShot(${i},'start_sec',this.value)"></td>
+      <td><input class="sec" type="number" step="0.1" value="${s.end_sec ?? 0}" onchange="editShot(${i},'end_sec',this.value)"></td>
+      <td><input value="${escapeAttr(s.role || '')}" onchange="editShot(${i},'role',this.value)"></td>
+      <td><input value="${escapeAttr(s.caption || '')}" onchange="editShot(${i},'caption',this.value)"></td>
+      <td><input value="${escapeAttr(s.fx || 'none')}" onchange="editShot(${i},'fx',this.value)"></td>
+    </tr>`).join("");
+}
+
+function editShot(i, key, val) {
+  const shot = workingShots[i];
+  const prev = shot[key];
+  shot[key] = key.includes("sec") ? parseFloat(val) : val;
+  editActions.push({op:"edit", index:i, key, from:prev, to:shot[key]});
+}
+function moveShot(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= workingShots.length) return;
+  const [row] = workingShots.splice(i, 1);
+  workingShots.splice(j, 0, row);
+  editActions.push({op:"move", from:i, to:j});
+  drawTimeline();
+}
+function dropShot(i) {
+  const gone = workingShots.splice(i, 1)[0];
+  editActions.push({op:"delete", index:i, shot:gone});
+  drawTimeline();
+}
+function addShot() {
+  workingShots.push({video_index:0, start_sec:0, end_sec:2, role:"setup", caption:"", fx:"none"});
+  editActions.push({op:"add", index:workingShots.length - 1});
+  drawTimeline();
+}
+
+function renderTranscript(job) {
+  const words = (job.transcript && job.transcript.words) || [];
+  const host = document.getElementById("transcript-words");
+  if (!words.length) { host.innerHTML = `<span class='hint'>${tx("no_transcript")}</span>`; return; }
+  const tighten = job.tighten || {};
+  document.getElementById("tighten-hint").textContent =
+    tx("tighten", {sec: tighten.saved_silence_sec || 0, n: tighten.filler_n || 0});
+  host.innerHTML = "";
+  words.forEach(w => {
+    const s = document.createElement("span");
+    s.className = "word" + (w.keep === false ? " off" : "");
+    s.textContent = w.w || "·";
+    s.onclick = () => { w.keep = w.keep === false; s.classList.toggle("off", w.keep === false); };
+    host.appendChild(s);
+  });
+  host._words = words;
+}
+
+async function recutFromTranscript() {
+  const words = document.getElementById("transcript-words")._words || [];
+  const drops = words.filter(w => w.keep === false).map(w => ({
+    video_index: w.video_index || 0, start_sec: w.t0, end_sec: w.t1,
+  }));
+  const msg = document.getElementById("tl-msg");
+  if (!drops.length) { msg.textContent = tx("no_drops"); return; }
+  const fd = new FormData();
+  fd.append("drops", JSON.stringify(drops));
+  msg.textContent = tx("recutting");
+  try {
+    const r = await fetch(`/api/jobs/${currentJob}/recut`, { method:"POST", body:fd });
+    const data = await r.json();
+    if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : tx("error"));
+    workingShots = [];
+    watchJob(currentJob);
+  } catch (e) { msg.textContent = e.message; }
 }
 
 async function submitEval(choice) {
   const msg = document.getElementById("eval-msg");
-  msg.textContent = "선택 저장 중…";
-  for (const b of document.getElementById("choice-buttons").querySelectorAll("button")) b.disabled = true;
+  msg.textContent = tx("saving_start");
   const fd = new FormData();
   fd.append("choice", choice);
   fd.append("comment", document.getElementById("comment").value);
   try {
     const r = await fetch(`/api/jobs/${currentJob}/evaluate`, { method:"POST", body:fd });
     const data = await r.json();
-    const err = typeof data.detail === "string" ? data.detail
-      : Array.isArray(data.detail) ? data.detail.map(d => d.msg || JSON.stringify(d)).join("; ")
-      : (data.detail ? JSON.stringify(data.detail) : "오류");
-    msg.textContent = r.ok
-      ? `선택 저장됨 (편집 ${choice}). 취향 학습은 백그라운드에서 이어갑니다.`
-      : err;
-  } catch (e) {
-    msg.textContent = e.message;
-  }
+    msg.textContent = r.ok ? tx("saved_start", {choice}) : (data.detail || tx("error"));
+    workingShots = [];
+  } catch (e) { msg.textContent = e.message; }
   refreshJob();
-  loadLearning();
+  loadTraces();
 }
 
-async function learnReference() {
-  const url = document.getElementById("ref-url").value.trim();
-  const msg = document.getElementById("ref-msg");
-  if (!url) { msg.textContent = "링크를 입력하세요."; return; }
+async function saveTimeline(rerender) {
+  const msg = document.getElementById("tl-msg");
   const fd = new FormData();
-  fd.append("url", url);
-  fd.append("notes", document.getElementById("ref-notes").value);
-  const btn = document.getElementById("ref-btn");
-  btn.disabled = true;
-  msg.textContent = "다운로드 및 편집 스타일 분석 중… (1~2분 걸릴 수 있습니다)";
+  fd.append("shots", JSON.stringify(workingShots));
+  fd.append("actions", JSON.stringify(editActions));
+  fd.append("comment", document.getElementById("comment").value);
+  fd.append("rerender", rerender ? "1" : "");
+  msg.textContent = rerender ? tx("saving_preview") : tx("saving");
   try {
-    const r = await fetch("/api/references", { method: "POST", body: fd });
+    const r = await fetch(`/api/jobs/${currentJob}/timeline`, { method:"POST", body:fd });
     const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || "오류");
-    msg.textContent = `학습 완료 — "${data.reference.style.style_summary}" → 기준 v${data.rubric_version}에 반영됨`;
-    loadReferences();
-  } catch (e) { msg.textContent = "실패: " + e.message; }
-  finally { btn.disabled = false; }
-}
-
-async function loadReferences() {
-  const r = await fetch("/api/references");
-  if (!r.ok) return;
-  const refs = await r.json();
-  const ul = document.getElementById("ref-list");
-  ul.innerHTML = "";
-  for (const ref of refs.slice(-10).reverse()) {
-    const li = document.createElement("li");
-    li.textContent = `${ref.url} — ${ref.style.style_summary} (기준 v${ref.rubric_version})`;
-    ul.appendChild(li);
-  }
+    if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : tx("error"));
+    msg.textContent = rerender ? tx("redrawing") : tx("saved_tl", {n: data.shots});
+    if (rerender) watchJob(currentJob);
+    loadTraces();
+  } catch (e) { msg.textContent = e.message; }
 }
 
 async function loadJobList() {
   const r = await fetch("/api/jobs");
   const jobs = await r.json();
   const ul = document.getElementById("job-list");
+  const labels = stageLabels();
   ul.innerHTML = "";
   for (const j of jobs.slice(0, 20)) {
     const li = document.createElement("li");
-    li.textContent = `${j.id} — ${STAGE_LABELS[j.stage] || j.stage}`
-      + (j.progress && j.progress.pct != null && !["done","failed","awaiting_evaluation"].includes(j.stage)
-        ? ` ${j.progress.pct}%` : "")
-      + (j.user_choice ? " (선택: "+j.user_choice+")" : "");
-    li.onclick = () => watchJob(j.id);
+    li.textContent = `${j.id} — ${labels[j.stage] || j.stage}`
+      + (j.user_choice ? tx("start_of", {label: j.user_choice}) : "");
+    li.onclick = () => { workingShots = []; watchJob(j.id); };
     ul.appendChild(li);
   }
 }
-async function loadLearning() {
-  const r = await fetch("/api/learning");
+
+async function loadTraces() {
+  const r = await fetch("/api/traces");
   if (!r.ok) return;
   const d = await r.json();
-  const cards = [
-    ["내 A/B 선택", `${d.picks}`],
-    ["AI 심사와 일치", `${d.picks ? Math.round(100 * d.agreed / d.picks) : 0}%`],
-    ["레퍼런스", `${d.references}`],
-    ["기준 버전", `v${d.rubric_version}`],
-    ["학습된 규칙", `${d.rules_in_prompt.length}/${d.rules_total}`],
-  ];
-  document.getElementById("learn-cards").innerHTML = cards
-    .map(([k, v]) => `<div class="card"><b>${v}</b><span>${k}</span></div>`).join("");
-
-  const bar = document.getElementById("learn-bar");
-  bar.innerHTML = d.criteria.map(c =>
-    `<u title="${escapeHtml(c.name)} ${c.weight} (seed 대비 ${c.delta >= 0 ? "+" : ""}${c.delta})"
-        style="width:${c.weight}%;opacity:${c.delta === 0 ? .45 : 1}"></u>`).join("");
-  document.getElementById("learn-progress").textContent =
-    `${d.vision_model || d.model} 이 원본을 읽고 ${d.model} 이 서사를 짭니다. `
-    + `심사는 ${d.judge_model || d.model}. `
-    + `검증만 ${d.fast_model || d.verify_model}`
-    + (d.gpt_live ? ` + ${d.verify_model}` : " (OpenAI 없음 — Grok으로 검증)")
-    + `. 선택할 때마다 기준표를 다시 쓰고(현재 v${d.rubric_version}), `
-    + `가장 자주 재확인된 규칙 ${d.rules_in_prompt.length}개가 프롬프트에 실제로 들어갑니다.`
-    + (d.rubric_notes ? ` 최근 변경: ${d.rubric_notes.slice(0, 220)}` : "");
-
-  document.getElementById("learn-rules").innerHTML =
-    `<div style="color:#7fd0ff">프롬프트에 지금 들어가는 규칙</div>`
-    + d.rules_in_prompt.map(x => `<div>· ${escapeHtml(x)}</div>`).join("");
-  document.getElementById("learn-samples").innerHTML = d.recent.map(s =>
-    `<div class="pref"><b>선택 ${escapeHtml(s.choice)} ✓</b><span>${escapeHtml(s.chosen)}</span></div>
-     <div class="pref"><s>미선택 ✗</s><span>${escapeHtml(s.rejected)}</span></div>
-     <div style="color:#666">${s.agreement ? "AI 심사와 일치" : "AI 심사와 불일치 — 가장 강한 학습 신호"}`
-    + `${s.comment ? " · 코멘트: " + escapeHtml(s.comment) : ""} → 기준 v${s.rubric_version}</div>`).join("");
+  const s = d.stats || {};
+  document.getElementById("trace-cards").innerHTML = [
+    [tx("traces_saved"), s.traces || 0],
+    [tx("traces_picks"), s.picks || 0],
+    [tx("traces_edits"), s.human_edits || 0],
+  ].map(([k,v]) => `<div class="card"><b>${v}</b><span>${k}</span></div>`).join("");
+  document.getElementById("trace-goal").textContent = s.goal || "";
+  const ul = document.getElementById("trace-list");
+  ul.innerHTML = "";
+  for (const row of (d.recent || []).slice(0, 12)) {
+    const li = document.createElement("li");
+    li.textContent = `${row.job_id} · ${row.kind}${row.pick ? " " + row.pick : ""} · ${tx("actions_n")} ${(row.actions||[]).length} · ${(row.comment || "").slice(0, 80)}`;
+    ul.appendChild(li);
+  }
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
 }
-
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/'/g, "&#39;");
+}
+function channelField(p, key) {
+  if (lang === "ko") return p[key + "_ko"] || p[key] || "";
+  return p[key] || "";
+}
 function pickChannel(id) {
   selectedChannel = id;
-  for (const b of document.querySelectorAll("#channel-chips .chip")) {
-    b.classList.toggle("on", b.dataset.id === id);
-  }
+  for (const b of document.querySelectorAll("#channel-chips .chip")) b.classList.toggle("on", b.dataset.id === id);
   const p = briefPresets.find(x => x.id === id);
-  if (!p) return;
-  document.getElementById("brief-hunt").value = p.hunt;
-  document.getElementById("brief-emphasize").value = p.emphasize;
-  document.getElementById("brief-skip").value = p.skip;
+  if (p) {
+    document.getElementById("brief-hunt").value = channelField(p, "hunt");
+    document.getElementById("brief-emphasize").value = channelField(p, "emphasize");
+    document.getElementById("brief-skip").value = channelField(p, "skip");
+  }
 }
-
 async function loadBriefPresets() {
   const r = await fetch("/api/brief");
   if (!r.ok) return;
@@ -507,15 +955,15 @@ async function loadBriefPresets() {
   box.innerHTML = "";
   for (const p of briefPresets) {
     const b = document.createElement("button");
-    b.type = "button";
-    b.className = "chip";
-    b.dataset.id = p.id;
-    b.textContent = p.label;
+    b.type = "button"; b.className = "chip"; b.dataset.id = p.id;
+    b.textContent = channelField(p, "label");
     b.onclick = () => pickChannel(p.id);
     box.appendChild(b);
   }
+  if (selectedChannel) {
+    for (const b of box.querySelectorAll(".chip")) b.classList.toggle("on", b.dataset.id === selectedChannel);
+  }
 }
-
 function fillChips(boxId, items, selected, onPick) {
   const box = document.getElementById(boxId);
   box.innerHTML = "";
@@ -523,8 +971,7 @@ function fillChips(boxId, items, selected, onPick) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "chip" + (p.id === selected ? " on" : "");
-    b.dataset.id = p.id;
-    b.textContent = p.label;
+    b.dataset.id = p.id; b.textContent = p.label;
     b.onclick = () => {
       onPick(p.id);
       for (const x of box.querySelectorAll(".chip")) x.classList.toggle("on", x.dataset.id === p.id);
@@ -532,35 +979,48 @@ function fillChips(boxId, items, selected, onPick) {
     box.appendChild(b);
   }
 }
-
+function localizeStyle(d) {
+  const voices = (d.voices || []).map(v => ({...v, label: tx("v_" + v.id) === "v_" + v.id ? v.label : tx("v_" + v.id)}));
+  const qualities = (d.qualities || []).map(q => ({
+    ...q,
+    label: tx("q_" + q.id) === "q_" + q.id ? q.label : tx("q_" + q.id),
+    hint: tx("qh_" + q.id) === "qh_" + q.id ? q.hint : tx("qh_" + q.id),
+  }));
+  return {...d, voices, qualities};
+}
 async function loadStylePresets() {
-  const r = await fetch("/api/style");
-  if (!r.ok) return;
-  const d = await r.json();
+  if (!lastStyle) {
+    const r = await fetch("/api/style");
+    if (!r.ok) return;
+    lastStyle = await r.json();
+  }
+  const d = localizeStyle(lastStyle);
   const fonts = d.fonts || [];
   const voices = d.voices || [];
   if (fonts.length && !fonts.some(f => f.id === selectedFont)) selectedFont = fonts[0].id;
   fillChips("font-chips", fonts, selectedFont, id => { selectedFont = id; });
   fillChips("voice-chips", voices, selectedVoice, id => { selectedVoice = id; });
-  const qualities = d.qualities || [];
-  const unlocked = d.unlocked !== false;
-  const shown = qualities.filter(q => !q.pro || unlocked);
+  const shown = (d.qualities || []).filter(q => !q.pro || d.unlocked !== false);
   if (shown.length && !shown.some(q => q.id === selectedQuality)) selectedQuality = shown[0].id;
   const hint = document.getElementById("quality-hint");
-  const applyHint = () => {
-    const q = shown.find(x => x.id === selectedQuality);
-    if (q && q.hint) hint.textContent = q.hint + (q.pro && !d.claude ? " Claude 키가 없으면 편집안은 Grok으로 갑니다." : "");
-  };
+  const applyHint = () => { const q = shown.find(x => x.id === selectedQuality); if (q && q.hint) hint.textContent = q.hint; };
   fillChips("quality-chips", shown, selectedQuality, id => { selectedQuality = id; applyHint(); });
   applyHint();
 }
-
-loadBriefPresets();
-loadStylePresets();
-loadJobList();
-loadReferences();
-loadLearning();
-setInterval(loadLearning, 15000);
+function loadEditorChips() {
+  const box = document.getElementById("editor-chips");
+  box.innerHTML = "";
+  for (const p of editorChips()) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip" + (editorFlags[p.id] ? " on" : "");
+    b.dataset.id = p.id; b.textContent = p.label;
+    b.onclick = () => { editorFlags[p.id] = !editorFlags[p.id]; b.classList.toggle("on", editorFlags[p.id]); };
+    box.appendChild(b);
+  }
+}
+applyI18n();
+setInterval(loadTraces, 20000);
 </script>
 </body>
 </html>

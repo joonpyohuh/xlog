@@ -5,7 +5,9 @@ from app.llm.grok_client import (  # noqa: F401
     client,
     complete_json,
     complete_with_tools,
+    format_research,
     frames_content,
+    parse_search_response,
     research_trends,
     should_research,
 )

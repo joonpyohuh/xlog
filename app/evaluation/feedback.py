@@ -150,7 +150,9 @@ def regularize(
             "weight": w,
             "description": c.get("description") or "",
         })
-    old_prefs = [p for p in (current.get("preferences") or []) if str(p).strip()]
+    old_prefs = _keep_house(
+        [p for p in (current.get("preferences") or []) if str(p).strip()]
+    )
     added: list[str] = []
     restated: list[str] = []
     for rule in proposed.get("preferences") or []:
@@ -171,6 +173,19 @@ def regularize(
         "notes": (proposed.get("notes") or "nudge from comment")[:300],
         "_restated": restated,
     }
+
+
+def _keep_house(prefs: list[str]) -> list[str]:
+    from app.evaluation.taste import HOUSE_RULES
+    out = list(HOUSE_RULES)
+    house = set(HOUSE_RULES)
+    for p in prefs:
+        if p in house:
+            continue
+        if any(h in p or p in h for h in HOUSE_RULES):
+            continue
+        out.append(p)
+    return out
 
 
 def _existing_match(rule: str, existing: list[str]) -> str | None:

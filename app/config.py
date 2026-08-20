@@ -18,30 +18,26 @@ load_dotenv(BASE_DIR / ".env")
 ON_VERCEL = bool(os.environ.get("VERCEL"))
 
 # ------------------ API ------------------ #
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 XAI_API_KEY = os.environ.get("XAI_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-# Gemini: bulk video understanding (native file, not JPEG batches).
-# Grok: shot plans, humor, editorial judgment — the old Opus jobs.
-# GPT-mini: independent second witness only.
-# Haiku: leftover mechanical JSON if Anthropic is still configured.
+# GPT Terra: footage frames + shot plans (instruction-following, not Sol reasoning).
+# Grok: live X search + judge. Gemini: fallback if GPT is down. GPT-mini: verifier.
 GEMINI_MODEL = os.environ.get("XLOG_GEMINI_MODEL", "gemini-3.5-flash-lite")
 GROK_MODEL = os.environ.get("XLOG_GROK_MODEL", "grok-4.6")
-# Writer stays on Grok when a key is present (Claude is not in the live path).
-# Set 0 to skip live X trend research; the shot-plan call still uses Grok.
-USE_GROK_FOR_WRITER = os.environ.get("XLOG_USE_GROK_FOR_WRITER", "1") != "0"
+OPENAI_EDITOR_MODEL = os.environ.get("XLOG_OPENAI_EDITOR_MODEL", "gpt-5.6-terra")
+# none = no extra thinking tokens. Editing is quoting the frame, not solving.
+OPENAI_EDITOR_EFFORT = os.environ.get("XLOG_OPENAI_EDITOR_EFFORT", "none")
+# Set 1 to force Grok shot plans even when GPT is available.
+USE_GROK_FOR_WRITER = os.environ.get("XLOG_USE_GROK_FOR_WRITER", "0") != "0"
 # x_search before writing: on = always (meme voice needs live slang).
 # auto = only when the brief sounds trendy/funny. off = never.
 GROK_TRENDS = os.environ.get("XLOG_GROK_TRENDS", "on")
 # Local default: both quality chips work. Paid Pro later sets this to 0.
 PRO_UNLOCKED = os.environ.get("XLOG_PRO_UNLOCKED", "1") != "0"
 QUALITY_DEFAULT = os.environ.get("XLOG_QUALITY", "fast")
-CLAUDE_MODEL = os.environ.get("XLOG_CLAUDE_MODEL", "claude-opus-5")
-CLAUDE_MID_MODEL = os.environ.get("XLOG_CLAUDE_MID_MODEL", "claude-sonnet-5")
-CLAUDE_FAST_MODEL = os.environ.get("XLOG_CLAUDE_FAST_MODEL", "claude-haiku-4-5")
 OPENAI_MODEL = os.environ.get("XLOG_OPENAI_MODEL", "gpt-4.1-mini")
-CROSS_CHECK = bool(OPENAI_API_KEY or XAI_API_KEY or ANTHROPIC_API_KEY)
+CROSS_CHECK = bool(OPENAI_API_KEY or XAI_API_KEY)
 # Grok reasoning_effort. Default on the API is high — always set it.
 WRITER_EFFORT = os.environ.get("XLOG_WRITER_EFFORT", "high")
 JUDGE_EFFORT = os.environ.get("XLOG_JUDGE_EFFORT", "medium")
@@ -126,10 +122,9 @@ YTDLP_COOKIES_FROM_BROWSER = os.environ.get(
 YTDLP_TIMEOUT_SEC = int(os.environ.get("XLOG_YTDLP_TIMEOUT_SEC", "300"))
 REFERENCE_ANALYSIS_FPS = 1.0   # denser sampling: we're studying the *editing*
 REFERENCE_MAX_SEC = 180        # only learn from short-form references
-SOURCE_MAX_SEC = 30 * 60       # long-form YouTube source cap
+SOURCE_MAX_SEC = int(os.environ.get("XLOG_SOURCE_MAX_SEC", str(60 * 60)))  # default 60min
 # Learned taste is injected as a bounded, reinforcement-ranked rule list.
-# Anthropic has no fine-tuning API, so the cap is what keeps the prompt fixed
-# in size as evidence grows. One-off rules stay out until they show up twice.
+# One-off rules stay out until they show up twice.
 TASTE_RULES_IN_PROMPT = int(os.environ.get("XLOG_TASTE_RULES", "8"))
 TASTE_MIN_SEEN = int(os.environ.get("XLOG_TASTE_MIN_SEEN", "2"))
 TASTE_RULE_CHARS = 200
@@ -152,10 +147,26 @@ RENDER_WORKERS = int(os.environ.get("XLOG_RENDER_WORKERS", "4"))
 # Two shots may not reuse the same footage; overlap beyond this is trimmed away.
 MAX_SHOT_OVERLAP_SEC = 0.5
 
+# ------------------ Pro editor time-savers (CapCut / Premiere chores) ---------- #
+# Silence/filler: ffmpeg is free; Whisper is only for filler words on the
+# *shot spans* (~1 min of audio), not the whole vlog.
+STT_MODEL = os.environ.get("XLOG_STT_MODEL", "whisper-1")
+SILENCE_NOISE_DB = float(os.environ.get("XLOG_SILENCE_DB", "-35"))
+SILENCE_MIN_SEC = float(os.environ.get("XLOG_SILENCE_MIN_SEC", "0.2"))
+BREATH_KEEP_SEC = 0.08
+ZOOM_FATIGUE_SEC = 15.0
+ZOOM_SCALES = (1.10, 1.15)
+SFX_GAIN = 0.14          # linear; keeps SFX under dialogue
+SFX_REPEAT_WINDOW_SEC = 12.0
+# YouTube Shorts / Reels right-rail + bottom UI. Captions stay inside this.
+SAFE_TOP = 0.12
+SAFE_BOTTOM = 0.78
+SAFE_SIDE = 0.10
+SAFE_RIGHT_EXTRA = 0.08  # like/comment column
+
 # ------------------ Narration (captions read aloud, in sync) ------------------ #
 NARRATION = os.environ.get("XLOG_NARRATION", "1") != "0"
-# Anthropic has no speech API, so narration runs on edge-tts: free, no key,
-# and it keeps the voice track independent of any billing balance.
+# edge-tts: free, no key.
 EDGE_TTS_VOICE = os.environ.get("XLOG_EDGE_TTS_VOICE", "ko-KR-SunHiNeural")
 NARRATION_DUCK = float(os.environ.get("XLOG_NARRATION_DUCK", "0.28"))
 NARRATION_MAX_TEMPO = 1.6   # speed-up ceiling when a line overruns its shot

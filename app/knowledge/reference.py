@@ -3,7 +3,7 @@
 The local app is the pilot creator's personal criteria-building tool: give
 it a YouTube (Shorts) link whose editing you admire and it will
   1. download the video (yt-dlp),
-  2. sample frames densely and have Claude analyze the *editing* — pacing,
+  2. sample frames densely and have Gemini analyze the *editing* — pacing,
      caption usage, hook construction, structure,
   3. distill concrete reusable rules and merge them into the rubric's
      `preferences` (versioned, like every rubric change).
@@ -159,7 +159,9 @@ def _merge_into_rubric(url: str, notes: str, style: dict) -> dict:
         ),
         schema=rubric_store.RUBRIC_SCHEMA,
     )
+    from app.evaluation.feedback import _keep_house
     new_rubric["version"] = current["version"] + 1
+    new_rubric["preferences"] = _keep_house(new_rubric.get("preferences") or [])
     rubric_store.save_rubric(new_rubric, source="reference")
     return new_rubric
 

@@ -14,7 +14,7 @@ import traceback
 
 from app import config
 from app.evaluation import taste
-from app.llm import grok
+from app.llm import grok, openai_client
 from app.llm.grok_client import research_trends, should_research
 from app.pipeline import captions as captions_mod
 from app.pipeline import quality as quality_mod
@@ -74,15 +74,13 @@ _FUNNY_ASK = re.compile(
 _SWEAR_ASK = re.compile(r"욕|비속어|쌍욕|swear|profan", re.I)
 
 _MEME_BLOCK = (
-    "### 이 영상의 농담을 찾아라\n"
-    "concept / hook_rationale / 매 샷 caption이 이 숏의 전부다. "
-    "컷이 좋아도 캡션이 설명문·템플릿이면 실패다.\n"
-    "훅부터 써라: 이 컷의 어긋남(의도 vs 결과, 말 vs 행동)을 고유명사·동작·대사로. "
-    "그 줄이 이 영상이 아니면 성립하지 않아야 한다.\n"
-    "페이오프는 훅을 회수하거나 배신한다. 새 주제로 새지 마라.\n"
-    "금지: 이게 내 인생, 실화냐, 존나 멸망, 그래서 뭐, 오늘도 화이팅, "
-    "귀여운 순간, 오늘은 ~했다, 장면과 무관한 욕.\n"
-    "욕은 기본 금지. 웃기게 ≠ 욕.\n\n"
+    "### 이 크리에이터의 고르는 이유 (체크리스트보다 앞)\n"
+    "1) 훅 1–2줄 = 지금 상황 또는 화두.\n"
+    "2) 캡션 = 그 샷의 대사·어긋남·반응. 원본 박힌 자막 금지.\n"
+    "3) 같은 컷 반복 금지. 한 전제 → 진행 → 회수.\n"
+    "4) 장면이 이어지게. 과정 설명 세 샷 연속 금지.\n"
+    "5) 웃기게 ≠ 욕. 템플릿 금지: 실화냐, 이게 내 인생, 존나 쎄네.\n"
+    "페이오프는 훅을 회수한다. 새 주제로 새지 마라.\n\n"
 )
 
 _FUNNY_BLOCK = (
@@ -118,10 +116,13 @@ def _voice_block(instruction: str) -> str:
 
 
 _TREND_BLOCK = (
-    "### 지금 도는 말투 (live X search)\n"
+    "### 지금 도는 말투 (x_search, 최근 14일 — 추측 금지)\n"
     "{research_result}\n\n"
-    "구조만 빌려라. 문장은 이 영상의 고유명사·동작·대사로 다시 써라. "
-    "트렌드 문장·욕을 복붙하지 마라. 죽은 유행은 버려라.\n\n"
+    "이 블록이 검색 결과다. 학습된 옛 밈으로 대체하지 마라.\n"
+    "- 인용된 반응 문장을 이 영상 고유명사·동작·대사에 이식해서 caption에 실제로 써라.\n"
+    "- 한 베리언트에 최소 3개 캡션이 위 인용의 변형이어야 한다.\n"
+    "- concept는 가져온 밈/말투 중 이 영상에 맞는 것을 밝혀라.\n"
+    "- 관련 없는 챌린지·죽은 유행은 버려라. 검색에 없는 욕을 만들지 마라.\n\n"
 )
 
 
@@ -142,23 +143,41 @@ def moments_blurb(analysis: dict) -> str:
 
 
 def will_research(instruction: str, analysis: dict) -> bool:
-    if not config.USE_GROK_FOR_WRITER or not grok.available():
+    """Search is independent of who writes the shot list — it only needs Grok."""
+    if not grok.available():
         return False
     return should_research(instruction, moments_blurb(analysis))
 
 
+def research_text(research: object) -> str:
+    """Only a pack that actually searched may reach the writer."""
+    if isinstance(research, dict):
+        if not research.get("searched"):
+            return ""
+        return (research.get("text") or "").strip()
+    text = (research or "").strip() if isinstance(research, str) else ""
+    if not text or text.startswith("특별한 트렌드 없음"):
+        return ""
+    return text
+
+
 def _complete_plans(system: str, user: str, spec: dict) -> dict:
-    if spec.get("writer") == "claude" and config.ANTHROPIC_API_KEY:
+    use_gpt = spec.get("writer") == "gpt" and openai_client.available()
+    if config.USE_GROK_FOR_WRITER:
+        use_gpt = False
+    if use_gpt:
         try:
-            from app.llm import claude
-            print("[screenwriter] writer=Claude", config.CLAUDE_MODEL)
-            return claude.complete_json(
+            print("[screenwriter] writer=GPT", config.OPENAI_EDITOR_MODEL)
+            return openai_client.complete_json(
                 system, user, _PLAN_SCHEMA,
-                max_tokens=16000, effort="high", model=config.CLAUDE_MODEL,
+                schema_name="plans", max_tokens=16000,
+                model=config.OPENAI_EDITOR_MODEL,
+                effort=config.OPENAI_EDITOR_EFFORT,
             )
         except Exception:
             traceback.print_exc()
-            print("[screenwriter] Claude writer failed, Grok fallback")
+            print("[screenwriter] GPT writer failed, Grok fallback")
+    print("[screenwriter] writer=Grok", config.GROK_MODEL)
     return grok.complete_json(
         system, user, _PLAN_SCHEMA,
         max_tokens=16000, effort=config.WRITER_EFFORT, schema_name="plans",
@@ -166,7 +185,7 @@ def _complete_plans(system: str, user: str, spec: dict) -> dict:
 
 
 def write_plans(
-    analysis: dict, instruction: str = "", research: str = "",
+    analysis: dict, instruction: str = "", research: str | dict = "",
     quality: str = "fast",
 ) -> list[dict]:
     """Return VARIANTS_PER_JOB shot plans built from the analyzed moments."""
@@ -178,9 +197,10 @@ def write_plans(
         else "The user gave no specific request — still write a joke that only this footage supports, not a safe recap.\n\n"
     )
     instruction_block += _voice_block(instruction)
-    if not research and will_research(instruction, analysis):
+    if not research_text(research) and will_research(instruction, analysis):
         research = research_trends(instruction, moments_blurb(analysis))
-    trend_block = _TREND_BLOCK.format(research_result=research) if research else ""
+    live = research_text(research)
+    trend_block = _TREND_BLOCK.format(research_result=live) if live else ""
     must_note = (analysis.get("must_note") or "").strip()
     user = (
         instruction_block
@@ -209,9 +229,15 @@ def write_plans(
         "- differ in joke angle, not rudeness: A is the screenshot hook, "
         "B is a different specific joke on the same footage\n"
         "- every caption names something in THAT shot (what they did, said, "
-        "or got wrong) — never a label and never a template that fits another "
-        "video; hook and payoff must pay each other back\n"
-        "- run 8-14 shots of 2.5-5s each; a 1s shot is too short to read\n"
+        "or got wrong) — if a moment quotes a spoken line, the caption must "
+        "use those words or twist them, never replace them with 실화냐/존나 쎄네\n"
+        + (
+            "- live X lines are in the prompt: mutate at least 3 captions "
+            "from those quotes onto this footage\n"
+            if live else
+            "- no live X pack: do not invent 2026 memes from memory\n"
+        )
+        + "- run 8-14 shots of 2.5-5s each; a 1s shot is too short to read\n"
         "- vary caption_style shot to shot and spend the fx palette: at least "
         "three different fx values per variant (punch_in/zoom_in/zoom_out/"
         "shake/flash/whip), with a flash or whip on a structural pivot"
@@ -238,9 +264,12 @@ if __name__ == "__main__":
     }
     blurb = moments_blurb(fake)
     assert "넘어지고" in blurb and "폭소" in blurb, blurb
-    block = _TREND_BLOCK.format(research_result="특별한 트렌드 없음. 기본 감각으로 진행")
-    assert "live X search" in block
-    assert "복붙" in block and "고유명사" in block
+    block = _TREND_BLOCK.format(research_result="인용: 아니 이게 된다고\n- https://x.com/a/status/1")
+    assert "x_search" in block and "최소 3개" in block
+    assert research_text("") == ""
+    assert research_text("특별한 트렌드 없음. 기본 감각으로 진행") == ""
+    assert research_text({"searched": False, "text": "밈"}) == ""
+    assert "아니 이게" in research_text({"searched": True, "text": "인용: 아니 이게 된다고"})
     assert wants_funny("자막 웃기게") and wants_funny("funny captions")
     assert not wants_funny("차분한 정보 전달")
     assert wants_swears("욕 섞어줘")
@@ -250,6 +279,6 @@ if __name__ == "__main__":
     assert "씨발" not in funny_only and "시발" not in funny_only
     assert "더 독하게" not in funny_only
     assert "이 영상에서만" in funny_only
-    assert "어긋남" in _voice_block("차분한 정보")
+    assert "화두" in _voice_block("차분한 정보")
     assert "텍스트 레이어" not in _voice_block("차분한 정보")
     print("screenwriter trend-block self-check ok")

@@ -66,10 +66,10 @@ def _pixel_user(
         "You are watching the RENDERED 9:16 shorts (pixels), not just the "
         "shot list. The creator's brief is the scoring key: does this short "
         "contain the scenes they would have cut themselves, and are those "
-        "scenes punched the way they asked? A safe pretty edit loses to a "
-        "funnier, more specific caption. Extra swearing is not a point. "
-        "Score what you SEE: first-line hook, whether the joke needs this "
-        "footage, punch-ins, dead air, payoff twist.\n"
+        "scenes punched the way they asked? House taste: situation in the "
+        "first line, captions from THIS footage, no clip looping, connected "
+        "scenes over denser cuts, funny ≠ swearing. Extra swearing is not a "
+        "point. Score what you SEE.\n"
         "Shot-plan metadata (for reference only):\n"
         + json.dumps(
             [

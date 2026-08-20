@@ -156,6 +156,16 @@ def _create_tables(conn: sqlite3.Connection) -> None:
             error TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS edit_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts INTEGER NOT NULL,
+            job_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            pick TEXT,
+            comment TEXT,
+            payload TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS ft_active (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             model TEXT NOT NULL,
@@ -236,6 +246,26 @@ def save_rubric(rubric: dict, source: str = "unknown") -> None:
         _sync_preferences(conn, new_prefs, source, f"rubric_v{rubric['version']}", bump=False)
         _sync_preferences(
             conn, already_known, source, f"rubric_v{rubric['version']}", bump=True
+        )
+        conn.commit()
+
+
+def record_trace(row: dict) -> None:
+    init()
+    if _use_cloud():
+        return
+    with _lock, _connect() as conn:
+        conn.execute(
+            "INSERT INTO edit_traces (ts, job_id, kind, pick, comment, payload) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                int(row.get("ts") or time.time()),
+                row.get("job_id") or "",
+                row.get("kind") or "edit",
+                row.get("pick") or "",
+                row.get("comment") or "",
+                json.dumps(row, ensure_ascii=False),
+            ),
         )
         conn.commit()
 
@@ -562,6 +592,7 @@ def stats() -> dict:
             "form_count": _count("shorts_form_versions"),
             "rubric_snapshots": _count("rubric_versions"),
             "ft_examples": _count("ft_examples"),
+            "edit_traces": _count("edit_traces"),
             "ft_model": (
                 conn.execute("SELECT model FROM ft_active WHERE id = 1").fetchone()
                 or {"model": None}

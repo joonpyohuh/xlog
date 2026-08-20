@@ -123,14 +123,16 @@ def main() -> None:
     assert taste.taste_prompt() in taste.writer_system(), "writer lost learned taste"
 
     learning = taste.status()
-    assert learning["engine"] == "gemini+grok+gpt", learning
+    assert learning["engine"] == "gpt+grok+gemini", learning
     assert "grok" in config.GROK_MODEL, config.GROK_MODEL
     assert "gemini" in config.GEMINI_MODEL, config.GEMINI_MODEL
-    assert learning["vision_model"] == config.GEMINI_MODEL, learning
-    assert learning["model"] == config.GROK_MODEL, learning
+    assert learning["vision_model"] == config.OPENAI_EDITOR_MODEL, learning
+    assert learning["model"] == config.OPENAI_EDITOR_MODEL, learning
     assert learning["picks"] == 1 and learning["rubric_version"] == 3, learning
     assert learning["recent"][0]["choice"] == "A", learning["recent"]
-    assert learning["rules_in_prompt"] == ["Caption only what is visible in the frame."], learning
+    from app.evaluation.taste import HOUSE_RULES
+    assert learning["rules_in_prompt"][:5] == HOUSE_RULES, learning["rules_in_prompt"]
+    assert "Caption only what is visible in the frame." in learning["rules_in_prompt"]
 
     from app.pipeline import highlight
     windows = highlight._candidate_windows(
@@ -176,7 +178,7 @@ def main() -> None:
     prompt = rubric_store.rubric_as_prompt()
     assert "learned, v3" in prompt, prompt
     assert "essay" not in prompt.lower()
-    assert "stop the scroll" in prompt or "first 3 seconds" in prompt, prompt
+    assert "situation" in prompt.lower() or "premise" in prompt.lower(), prompt
 
     args = ingest._ytdlp_extra_args()
     if shutil.which("node"):

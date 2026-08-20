@@ -24,42 +24,46 @@ SEED_RUBRIC: dict = {
         {
             "name": "hook_strength",
             "weight": 25,
-            "description": "The first 3 seconds must make the viewer stop scrolling.",
+            "description": "First 1–2 caption lines declare the situation or throw "
+                           "a hook. A prettier 0s frame loses to a clear premise.",
         },
         {
             "name": "mainstream_convention",
-            "weight": 20,
-            "description": "Follows current X/TikTok caption and hook grammar: "
-                           "reaction, roast, reversal. Safe generic edits score low.",
+            "weight": 18,
+            "description": "Reaction captions on this footage. Source burned-in "
+                           "subtitles must be removed or cut around — cropped "
+                           "source text is a hard fail.",
         },
         {
             "name": "instruction_fit",
-            "weight": 20,
+            "weight": 18,
             "description": "Faithfully realizes the user's free-form request "
                            "(caption tone, effects, mood). Ignore this criterion "
                            "(redistribute judgment) when no request was given.",
         },
         {
             "name": "pacing",
-            "weight": 15,
-            "description": "Rhythmic cuts, no dead air, energy rises toward the payoff.",
+            "weight": 14,
+            "description": "Connected scenes beat tighter isolated cuts. Never "
+                           "three process/explanation shots in a row.",
         },
         {
             "name": "narrative_clarity",
-            "weight": 10,
-            "description": "One clear thread from hook to payoff; no confusing jumps.",
+            "weight": 15,
+            "description": "One premise, stated early, paid back at the end. "
+                           "Looping the same clips while captions carry the story "
+                           "is a fail. One thread only.",
         },
         {
             "name": "moment_selection",
             "weight": 10,
-            "description": "The genuinely best raw moments were used, not filler.",
+            "description": "Best raw moments, enough visual variety to support "
+                           "the caption story. Do not repeat footage.",
         },
     ],
-    "preferences": [
-        # Learned preferences accumulate here from creator evaluations,
-        # e.g. "prefers cuts on motion", "dislikes shots longer than 5s".
-    ],
-    "notes": "Seed rubric. Baseline = scroll-stopping captions, not a safe recap.",
+    "preferences": [],  # house rules live in taste.HOUSE_RULES; extras accrue here
+    "notes": "Seed: situation first, this-footage captions, no loops, "
+             "connected scenes, funny is not swearing.",
 }
 
 

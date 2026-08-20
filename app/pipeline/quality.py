@@ -10,22 +10,22 @@ from app import config
 PRESETS: dict[str, dict] = {
     "fast": {
         "id": "fast",
-        "label": "기본",
-        "hint": "빠르고 저렴. 분석은 저해상도, 편집안은 Grok.",
+        "label": "Standard",
+        "hint": "Faster and cheaper. GPT Terra reads frames; Grok searches X.",
         "gemini_media": "low",
         "video_fps": 1.0,
-        "writer": "grok",
+        "writer": "gpt",
         "crf": "18",
         "render_preset": "veryfast",
         "pro": False,
     },
     "pro": {
         "id": "pro",
-        "label": "프로",
-        "hint": "분석 고화질 + Claude 편집안(키 있으면) + 조금 더 깨끗한 인코딩. 편당 비용↑.",
+        "label": "Pro",
+        "hint": "Same editor, cleaner encode. Costs more per job.",
         "gemini_media": "high",
         "video_fps": 1.0,
-        "writer": "claude",
+        "writer": "gpt",
         "crf": "16",
         "render_preset": "faster",
         "pro": True,
@@ -46,7 +46,6 @@ def resolve(name: str | None) -> dict:
 def for_ui() -> dict:
     return {
         "unlocked": config.PRO_UNLOCKED,
-        "claude": bool(config.ANTHROPIC_API_KEY),
         "default": config.QUALITY_DEFAULT if config.QUALITY_DEFAULT in PRESETS else "fast",
         "qualities": [
             {
@@ -61,6 +60,7 @@ def for_ui() -> dict:
 
 
 if __name__ == "__main__":
-    assert resolve("fast")["writer"] == "grok"
+    assert resolve("fast")["writer"] == "gpt"
+    assert resolve("pro")["writer"] == "gpt"
     assert resolve("nope")["id"] == "fast"
     print("quality self-check ok", resolve("pro")["gemini_media"])

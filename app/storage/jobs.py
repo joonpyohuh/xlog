@@ -23,15 +23,15 @@ STAGES = [
 
 # Base percent when a stage starts. Sub-steps pass a higher pct.
 STAGE_PROGRESS = {
-    "queued": (0, "대기 중"),
-    "ingesting": (8, "원본 검증"),
-    "analyzing": (18, "장면 분석"),
-    "writing_plans": (60, "편집안 작성"),
-    "rendering": (70, "렌더링"),
-    "judging": (88, "AI 심사"),
-    "awaiting_evaluation": (100, "평가 대기"),
-    "done": (100, "완료"),
-    "failed": (None, "실패"),
+    "queued": (0, "Queued"),
+    "ingesting": (8, "Checking source"),
+    "analyzing": (18, "Indexing scenes"),
+    "writing_plans": (60, "Starting timeline"),
+    "rendering": (70, "Preview"),
+    "judging": (88, "Comparing starts"),
+    "awaiting_evaluation": (100, "Your call"),
+    "done": (100, "Done"),
+    "failed": (None, "Failed"),
 }
 
 
@@ -59,6 +59,8 @@ def create_job(
     voice: str = "auto",
     source_edited: bool = False,
     quality: str = "fast",
+    editor: dict | None = None,
+    consent: bool = False,
 ) -> dict:
     job_id = time.strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
     d = job_dir(job_id)
@@ -77,6 +79,8 @@ def create_job(
         "voice": voice or "auto",
         "source_edited": bool(source_edited),
         "quality": quality or "fast",
+        "editor": editor if isinstance(editor, dict) else {},
+        "consent": bool(consent),
         "analysis": None,
         "variants": None,
         "judge_verdict": None,

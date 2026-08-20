@@ -113,7 +113,7 @@ def download_youtube(url: str, dest_dir: Path, stem: str | None = None) -> Path:
         except subprocess.TimeoutExpired as e:
             raise IngestError(
                 f"yt-dlp timed out after {config.YTDLP_TIMEOUT_SEC}s. "
-                "원본 mp4를 직접 업로드하세요."
+                "Upload the source mp4 instead."
             ) from e
         if proc.returncode == 0:
             break
@@ -128,7 +128,7 @@ def download_youtube(url: str, dest_dir: Path, stem: str | None = None) -> Path:
     else:
         raise IngestError(
             "YouTube blocked the download (bot check / locked browser cookies). "
-            "Chrome·Edge를 완전히 종료한 뒤 다시 시도하거나, 원본 mp4를 직접 업로드하세요."
+            "Quit Chrome or Edge completely and retry, or upload the source mp4."
         )
     matches = list(dest_dir.glob(f"{stem}.*"))
     if not matches:
@@ -189,9 +189,11 @@ def validate_inputs(paths: list[Path]) -> list[dict]:
                 f"the minimum short length ({config.SHORT_MIN_SEC}s)"
             )
         if info["duration_sec"] > config.SOURCE_MAX_SEC:
+            cap_min = config.SOURCE_MAX_SEC / 60
+            dur_min = info["duration_sec"] / 60
             raise IngestError(
-                f"{p.name}: video is {info['duration_sec']:.0f}s — source cap is "
-                f"{config.SOURCE_MAX_SEC}s"
+                f"{p.name}: video is {dur_min:.0f}min — source cap is {cap_min:.0f}min "
+                f"(set XLOG_SOURCE_MAX_SEC in .env to raise)"
             )
         infos.append(info)
     return infos

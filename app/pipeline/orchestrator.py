@@ -6,14 +6,11 @@ ingest -> analyze (coarse then dense refine) -> write 2 shot plans
 from __future__ import annotations
 
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from app import config
-from app.evaluation import judge
-from app.evaluation import rubric as rubric_store
-from app.llm.grok_client import research_trends
-from app.pipeline import highlight, ingest, render, screenwriter, verify
+from app.pipeline import highlight, ingest, index as index_mod, polish, render, tighten
 from app.pipeline import quality as quality_mod
 from app.storage import cleanup
 from app.storage import jobs as job_store
@@ -29,12 +26,12 @@ def run_job(job_id: str) -> None:
         urls = job.get("source_urls") or []
         job_store.set_stage(
             job, "ingesting",
-            detail="YouTube 다운로드 중" if urls else "원본 길이·코덱 검사 중",
+            detail="Downloading from YouTube" if urls else "Checking duration and codec",
         )
         for i, url in enumerate(urls):
             job_store.set_stage(
                 job, "ingesting",
-                detail=f"YouTube 다운로드 {i + 1}/{len(urls)}",
+                detail=f"YouTube download {i + 1}/{len(urls)}",
                 pct=8 + int(8 * i / max(len(urls), 1)),
             )
             dest = ingest.download_youtube(
@@ -45,14 +42,24 @@ def run_job(job_id: str) -> None:
         nvid = len(job["videos"])
         job_store.set_stage(
             job, "ingesting",
-            detail=f"원본 {nvid}개 검사 중 (큰 파일은 조금 걸립니다)",
+            detail=f"Checking {nvid} file(s) — large files take a minute",
             pct=15,
         )
         video_infos = ingest.validate_inputs([Path(p) for p in job["videos"]])
+        flags = tighten.editor_flags(job)
+        if flags["silence"]:
+            job_store.set_stage(
+                job, "ingesting",
+                detail="Detecting silence (ffmpeg, no API cost)",
+                pct=16,
+            )
+            tighten.attach_silence(video_infos)
+        job["video_infos"] = _slim_infos(video_infos)
+        job_store.save_job(job)
         mins = sum(v["duration_sec"] for v in video_infos) / 60
         job_store.set_stage(
             job, "analyzing",
-            detail=f"프레임 추출 중 · 원본 {mins:.0f}분",
+            detail=f"Pulling frames · {mins:.0f} min of footage",
         )
 
         def _analyze_progress(detail: str, frac: float) -> None:
@@ -70,76 +77,22 @@ def run_job(job_id: str) -> None:
             source_edited=source_edited,
             quality=spec["id"],
         )
+        theme = {}
+        if flags["theme"]:
+            jpgs = list(work_dir.glob("**/f_*.jpg"))[:8]
+            theme = polish.sample_theme(jpgs)
+        job_store.set_stage(job, "analyzing", detail="Indexing scenes, lines, action", pct=88)
+        footage = index_mod.build(analysis, video_infos)
         job["analysis"] = analysis
+        job["caption_theme"] = theme
+        job["index"] = footage
+        job["ai_plan"] = footage.get("clips") or []
+        job["video_infos"] = _slim_infos(video_infos)
         job_store.save_job(job)
         cleanup.drop_intermediates(work_dir)
-
-        research = ""
-        if screenwriter.will_research(instruction, analysis):
-            job_store.set_stage(
-                job, "writing_plans", detail="X에서 최신 감각 검색 중",
-            )
-            research = research_trends(
-                instruction, screenwriter.moments_blurb(analysis),
-            )
-        job_store.set_stage(job, "writing_plans", detail="편집안 A/B 작성 중")
-        variants = screenwriter.write_plans(
-            analysis, instruction, research=research, quality=spec["id"],
-        )
-        variants = verify.validate_variants(variants, video_infos)
-        font = job.get("font") or "malgun"
-        voice = job.get("voice") or "auto"
-        channel = (brief or {}).get("channel") or ""
-        for v in variants:
-            v["font"] = font
-            v["voice"] = voice
-            v["channel"] = channel
-            v["source_edited"] = source_edited
-            v["crf"] = spec["crf"]
-            v["render_preset"] = spec["render_preset"]
-        job["variants"] = variants
-        job_store.save_job(job)
-
-        job_store.set_stage(job, "rendering", detail="숏츠 인코딩 시작")
-        summary = " ".join(v["summary"] for v in analysis["videos"])
-
-        def _render(v: dict) -> tuple[str, str]:
-            out = work_dir / f"short_{v['label']}.mp4"
-            render.render_variant(v, video_infos, work_dir, out)
-            return v["label"], str(out)
-
-        outputs: dict[str, str] = {}
-        with ThreadPoolExecutor(max_workers=len(variants)) as pool:
-            futs = [pool.submit(_render, v) for v in variants]
-            for i, fut in enumerate(as_completed(futs), 1):
-                label, path = fut.result()
-                outputs[label] = path
-                job_store.set_stage(
-                    job, "rendering",
-                    detail=f"편집 {label} 인코딩 완료 ({i}/{len(variants)})",
-                    pct=70 + int(16 * i / max(len(variants), 1)),
-                )
-        job["outputs"] = outputs
-        job_store.save_job(job)
-        cleanup.drop_intermediates(work_dir)
-
-        job_store.set_stage(job, "judging", detail="렌더된 숏츠 심사 중")
-        verdict = judge.judge_variants(
-            variants, summary, instruction,
-            outputs=job["outputs"], work_dir=work_dir,
-        )
-        job_store.set_stage(job, "judging", detail="교차 검증 중", pct=94)
-        opinion = verify.second_opinion(
-            variants, summary, instruction, rubric_store.rubric_as_prompt(),
-            outputs=job["outputs"], work_dir=work_dir,
-        )
-        if opinion is not None:
-            verdict["second_opinion"] = opinion
-            verdict["models_agree"] = opinion.get("winner") == verdict["winner"]
-        job["judge_verdict"] = verdict
-
         job_store.set_stage(
-            job, "awaiting_evaluation", detail="A/B 중 골라 주세요",
+            job, "awaiting_evaluation",
+            detail="Index ready. Source is untouched — keep, dump, or open the handles",
         )
     except Exception as e:  # noqa: BLE001 — surface any stage failure on the job
         traceback.print_exc()
@@ -149,3 +102,86 @@ def run_job(job_id: str) -> None:
             detail=str(e),
         )
         cleanup.slim_finished_job(job)
+
+
+def _slim_infos(infos: list[dict]) -> list[dict]:
+    keys = (
+        "path", "name", "duration_sec", "has_audio", "silences", "keeps",
+        "saved_silence_sec", "filler_n",
+    )
+    return [{k: i.get(k) for k in keys if k in i or k in ("path", "duration_sec")} for i in infos]
+
+
+def _apply_polish(
+    variants: list[dict],
+    infos: list[dict],
+    theme: dict,
+    flags: dict,
+    work: Path,
+) -> None:
+    if flags.get("theme") and theme:
+        polish.lock_caption_styles(variants, theme)
+    if flags.get("zoom"):
+        polish.apply_motion(variants, infos, work)
+    if flags.get("sfx"):
+        polish.assign_sfx(variants)
+        kit = polish.ensure_kit(work)
+        for v in variants:
+            for s in v.get("shots") or []:
+                name = s.get("sfx")
+                if name and name in kit:
+                    s["sfx_path"] = str(kit[name])
+    if flags.get("stickers"):
+        polish.place_stickers(variants, theme, work)
+    if flags.get("qa"):
+        polish.clamp_caption_layout(variants)
+
+
+def rerender(job_id: str, drops: list[dict] | None = None) -> None:
+    """Re-cut from the transcript without another LLM pass."""
+    job = job_store.load_job(job_id)
+    work_dir = job_store.job_dir(job_id)
+    try:
+        infos = job.get("video_infos") or ingest.validate_inputs(
+            [Path(p) for p in job["videos"]]
+        )
+        flags = tighten.editor_flags(job)
+        if drops:
+            tighten.apply_drops(infos, drops)
+            payload = job.get("transcript") or {}
+            words = list(payload.get("words") or [])
+            for w in words:
+                for d in drops:
+                    if int(w.get("video_index") or 0) != int(d.get("video_index") or 0):
+                        continue
+                    if float(w["t1"]) < float(d["start_sec"]) or float(w["t0"]) > float(d["end_sec"]):
+                        continue
+                    w["keep"] = False
+            job["transcript"] = {**payload, "words": words}
+        variants = job.get("variants") or []
+        tighten.snap_variants(variants, infos)
+        _apply_polish(variants, infos, job.get("caption_theme") or {}, flags, work_dir)
+        job["variants"] = variants
+        job["video_infos"] = _slim_infos(infos)
+        job_store.set_stage(job, "rendering", detail="Recutting from the transcript")
+
+        def _render(v: dict) -> tuple[str, str]:
+            out = work_dir / f"short_{v['label']}.mp4"
+            render.render_variant(v, infos, work_dir, out)
+            return v["label"], str(out)
+
+        outputs: dict[str, str] = {}
+        with ThreadPoolExecutor(max_workers=len(variants) or 1) as pool:
+            for label, path in pool.map(lambda v: _render(v), variants):
+                outputs[label] = path
+        job["outputs"] = outputs
+        nxt = "done" if job.get("user_choice") else "awaiting_evaluation"
+        job_store.set_stage(job, nxt, detail="Check the recut")
+    except Exception as e:  # noqa: BLE001
+        traceback.print_exc()
+        job_store.set_stage(
+            job, "failed",
+            error=f"{type(e).__name__}: {e}",
+            detail=str(e),
+        )
+

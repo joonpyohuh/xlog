@@ -44,7 +44,7 @@ def available_fonts() -> list[dict[str, str]]:
         if _first_font(spec["paths"]):
             out.append({"id": fid, "label": spec["label"]})
     if not out:
-        out = [{"id": "malgun", "label": "기본"}]
+        out = [{"id": "malgun", "label": "Default"}]
     return out
 
 
@@ -114,21 +114,43 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -> list[st
     return [l for l in lines if l]
 
 
-def make_caption_png(text: str, style: str, out_path: Path, font_id: str = "malgun") -> Path:
+def make_caption_png(
+    text: str,
+    style: str,
+    out_path: Path,
+    font_id: str = "malgun",
+    theme: dict | None = None,
+    safe: dict | None = None,
+) -> Path:
     """Full-frame transparent PNG with the caption look applied."""
     w, h = config.OUTPUT_WIDTH, config.OUTPUT_HEIGHT
-    spec = STYLES.get(style, STYLES["normal"])
+    spec = dict(STYLES.get(style, STYLES["normal"]))
+    if theme:
+        if style in ("normal", "plate", "sub", "impact"):
+            spec["fill"] = theme.get("fill") or spec["fill"]
+            spec["stroke"] = theme.get("stroke") or spec["stroke"]
+        elif style in ("emphasis", "gold", "pop", "hot", "mint", "neon"):
+            spec["fill"] = theme.get("accent") or spec["fill"]
+            spec["stroke"] = theme.get("stroke") or spec["stroke"]
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     size = int(w * spec["size_ratio"])
     font = _load_font(size, font_id)
     stroke = 0 if spec.get("stroke") is None else max(3, size // 7)
 
-    lines = _wrap(draw, text, font, max_width=int(w * 0.86))
+    side = float((safe or {}).get("side") or config.SAFE_SIDE)
+    right = float((safe or {}).get("right_extra") or config.SAFE_RIGHT_EXTRA)
+    max_w = int(w * (1 - side * 2 - right))
+    lines = _wrap(draw, text, font, max_width=max_w)
     line_h = int(size * 1.14)
     block_h = line_h * len(lines)
     max_tw = max((draw.textlength(line, font=font) for line in lines), default=0)
-    y0 = int(h * spec.get("y", 0.74)) - block_h // 2
+    y_frac = spec.get("y", 0.74)
+    top = float((safe or {}).get("top") or config.SAFE_TOP)
+    bot = float((safe or {}).get("bottom") or config.SAFE_BOTTOM)
+    y_frac = min(max(y_frac, top + 0.06), bot - 0.04)
+    y0 = int(h * y_frac) - block_h // 2
+    y0 = min(max(int(h * top), y0), int(h * bot) - block_h)
 
     pad_x, pad_y = int(size * 0.55), int(size * 0.28)
     box = (
@@ -179,4 +201,10 @@ if __name__ == "__main__":
         assert out.exists() and out.stat().st_size > 200, name
     fonts = available_fonts()
     assert fonts and fonts[0]["id"], fonts
+    themed = make_caption_png(
+        "상황 선언", "normal", tmp / "theme.png",
+        theme={"fill": "#3CFFB0", "stroke": "#04231A"},
+        safe={"top": 0.12, "bottom": 0.78, "side": 0.1, "right_extra": 0.08},
+    )
+    assert themed.exists()
     print("ok", len(CAPTION_STYLES) - 1, "styles", [f["id"] for f in fonts], tmp)

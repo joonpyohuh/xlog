@@ -1,10 +1,10 @@
 {
-  "version": 13,
+  "version": 12,
   "owner": "xlog baseline — mainstream shorts conventions + pilot creator references (LoL gameplay commentary, live-action narrative, movie-clip recut, family vlog comedy)",
   "criteria": [
     {
       "name": "hook_strength",
-      "weight": 24,
+      "weight": 25,
       "description": "First 1–2 caption lines declare the situation or throw a hook. A prettier 0s frame loses to a clear premise."
     },
     {
@@ -29,7 +29,7 @@
     },
     {
       "name": "moment_selection",
-      "weight": 11,
+      "weight": 10,
       "description": "Best raw moments, enough visual variety to support the caption story. Do not repeat footage."
     }
   ],
@@ -38,8 +38,7 @@
     "자막은 그 컷의 대사·어긋남·반응만. 원본에 박힌 자막은 제거하거나 그 구간을 잘라라.",
     "같은 컷을 반복하지 마라. 자막만 돌리고 영상이 없으면 실패다. 한 전제 → 진행 → 회수.",
     "타이트한 컷보다 장면이 이어지는 편집이 이긴다. 과정 설명 샷을 세 개 잇지 마라.",
-    "웃기게 ≠ 욕 ≠ 밈 체크리스트. 그 장면에서 벌어진 일만. 템플릿(실화냐, 이게 내 인생, 존나 쎄네)은 실패다.",
-    "영상의 킬포인트를 정확히 포착하고 훅을 더 강하게 강조하라."
+    "웃기게 ≠ 욕 ≠ 밈 체크리스트. 그 장면에서 벌어진 일만. 템플릿(실화냐, 이게 내 인생, 존나 쎄네)은 실패다."
   ],
-  "notes": "v13 — judge disagreed: hook_strength and moment_selection were over-weighted relative to raw kill-point impact; nudged weights by ±1 and added the user's kill-point hook preference."
+  "notes": "v12 — distilled house taste from written picks: situation first, this-footage captions, no clip loops, connected scenes, funny is not swearing. Dropped episode-specific prefs."
 }

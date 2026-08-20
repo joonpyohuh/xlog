@@ -13,17 +13,18 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from app import config
+from app.pipeline.tighten import shot_len
 
 VOICES = {
-    "off":      {"label": "없음 (원본 소리만)", "id": None},
-    "auto":     {"label": "자동 (장면마다 바뀜)", "id": None},
-    "sunhi":    {"label": "선히 · 밝은 여성", "id": "ko-KR-SunHiNeural"},
-    "yujin":    {"label": "유진 · 또렷한 여성", "id": "ko-KR-YuJinNeural"},
-    "jimin":    {"label": "지민 · 부드러운 여성", "id": "ko-KR-JiMinNeural"},
-    "seohyeon": {"label": "서현 · 차분한 여성", "id": "ko-KR-SeoHyeonNeural"},
-    "injoon":   {"label": "인준 · 힘있는 남성", "id": "ko-KR-InJoonNeural"},
-    "hyunsu":   {"label": "현수 · 낮은 남성", "id": "ko-KR-HyunsuNeural"},
-    "bongjin":  {"label": "봉진 · 중저음 남성", "id": "ko-KR-BongJinNeural"},
+    "off":      {"label": "Off (source audio)", "id": None},
+    "auto":     {"label": "Auto (varies by shot)", "id": None},
+    "sunhi":    {"label": "SunHi · bright female", "id": "ko-KR-SunHiNeural"},
+    "yujin":    {"label": "YuJin · clear female", "id": "ko-KR-YuJinNeural"},
+    "jimin":    {"label": "JiMin · soft female", "id": "ko-KR-JiMinNeural"},
+    "seohyeon": {"label": "SeoHyeon · calm female", "id": "ko-KR-SeoHyeonNeural"},
+    "injoon":   {"label": "InJoon · strong male", "id": "ko-KR-InJoonNeural"},
+    "hyunsu":   {"label": "Hyunsu · low male", "id": "ko-KR-HyunsuNeural"},
+    "bongjin":  {"label": "BongJin · baritone", "id": "ko-KR-BongJinNeural"},
 }
 
 _CHANNEL_VOICE = {
@@ -141,7 +142,7 @@ def _lines(variant: dict) -> list[tuple[float, float, dict]]:
     out: list[tuple[float, float, dict]] = []
     offset = 0.0
     for shot in variant.get("shots") or []:
-        length = float(shot["end_sec"]) - float(shot["start_sec"])
+        length = shot_len(shot)
         text = (shot.get("caption") or "").strip()
         if text and shot.get("caption_style", "none") != "none":
             out.append((offset, length, shot))
